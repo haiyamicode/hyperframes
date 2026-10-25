@@ -111,6 +111,7 @@ function packZoneLanes(
 
 /**
  * Assign display lanes for the timeline: visual lanes on top, audio lanes below.
+ * Audio authored above every visual track (a voiceover) stays on top, above the visual lanes.
  *
  * Both zones are packed the SAME way — by authored track-index, ascending (see
  * packZoneLanes) — so the timeline's vertical order follows each clip's track and
@@ -129,13 +130,21 @@ export function normalizeToZones(elements: TimelineElement[]): TimelineElement[]
   if (elements.length === 0) return elements;
 
   const laneOf = new Map<string, number>();
+  const lead: TimelineElement[] = [];
   const visual: TimelineElement[] = [];
   const audio: TimelineElement[] = [];
+  const authored = (el: TimelineElement) => el.authoredTrack ?? el.track;
+  let topVisual = Number.POSITIVE_INFINITY;
   for (const el of elements) {
-    (classifyZone(el) === "audio" ? audio : visual).push(el);
+    if (classifyZone(el) === "visual") topVisual = Math.min(topVisual, authored(el));
+  }
+  for (const el of elements) {
+    if (classifyZone(el) === "visual") visual.push(el);
+    else (authored(el) < topVisual ? lead : audio).push(el);
   }
 
   let nextLane = 0;
+  nextLane += packZoneLanes(lead, nextLane, laneOf);
   nextLane += packZoneLanes(visual, nextLane, laneOf);
   packZoneLanes(audio, nextLane, laneOf);
 

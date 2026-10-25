@@ -91,11 +91,22 @@ describe("normalizeToZones — CapCut-stable lanes follow the track-index (never
     expect(trackOf(out, "a")).toBe(2); // track 7
   });
 
-  it("drops audio below the visual lanes even when it holds a LOWER authored index", () => {
-    // Audio authored at track 0, video at track 5 — audio must still sink below.
+  it("keeps audio authored above every visual track on top (a voiceover lane)", () => {
+    // Audio authored at track 0, video at track 5 — the audio stays above the visual lanes.
     const out = normalizeToZones([zClip("a", 0, 10, 0, 0, "audio"), zClip("v", 0, 10, 5, 0)]);
-    expect(trackOf(out, "v")).toBe(0); // visual on top
-    expect(trackOf(out, "a")).toBe(1); // audio below, despite its lower track index
+    expect(trackOf(out, "a")).toBe(0);
+    expect(trackOf(out, "v")).toBe(1);
+  });
+
+  it("drops audio authored between visual tracks below the visual lanes", () => {
+    const out = normalizeToZones([
+      zClip("v0", 0, 10, 0, 0),
+      zClip("a", 0, 10, 1, 0, "audio"),
+      zClip("v2", 0, 10, 2, 0),
+    ]);
+    expect(trackOf(out, "v0")).toBe(0);
+    expect(trackOf(out, "v2")).toBe(1);
+    expect(trackOf(out, "a")).toBe(2);
   });
 
   it("drops audio below the visual lanes even when sharing a track index", () => {
