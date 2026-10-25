@@ -228,7 +228,7 @@ export class CompositionProbe {
         if (this._runtimeScript !== script || this._iframe.contentDocument !== doc) return;
         this.stop();
         this._failure = { document: doc };
-        this._callbacks.onError("HyperFrames runtime failed to load from " + script.src);
+        this._callbacks.onError("Preview runtime failed to load from " + script.src);
       };
       (doc.head || doc.documentElement).appendChild(script);
       this._callbacks.onRuntimeInjected?.();

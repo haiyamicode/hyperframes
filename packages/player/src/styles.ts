@@ -106,8 +106,18 @@ export const PLAYER_STYLES = /* css */ `
   .hfp-shader-loader-mark svg {
     display: block;
     overflow: visible;
-    filter: drop-shadow(0 0 5px rgba(79, 219, 94, 0.16));
     pointer-events: none;
+    animation: hfp-shader-loader-spin 0.9s linear infinite;
+  }
+
+  .hfp-shader-loader:not(.hfp-visible):not(.hfp-hiding) .hfp-shader-loader-mark svg {
+    animation-play-state: paused;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .hfp-shader-loader-mark svg {
+      animation: none;
+    }
   }
 
   .hfp-shader-loader-title {
@@ -200,6 +210,12 @@ export const PLAYER_STYLES = /* css */ `
 
   .hfp-shader-loader-value {
     text-align: right;
+  }
+
+  @keyframes hfp-shader-loader-spin {
+    to {
+      transform: rotate(360deg);
+    }
   }
 
   @keyframes hfp-shader-loader-sheen {

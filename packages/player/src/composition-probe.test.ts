@@ -38,7 +38,7 @@ describe("runtimeCdnUrlForVersion", () => {
   });
 
   it("rejects values that could create an unversioned or malformed URL", () => {
-    expect(() => runtimeCdnUrlForVersion("latest")).toThrow("Invalid HyperFrames runtime version");
+    expect(() => runtimeCdnUrlForVersion("latest")).toThrow("Invalid preview runtime version");
   });
 });
 
@@ -135,9 +135,7 @@ describe("src embed runtime discovery", () => {
     const { doc, probe, onError, onReady } = mount(nested, {}, { resolveRuntimeUrl: () => url });
     vi.advanceTimersByTime(200);
     injectedScript(doc).dispatchEvent(new Event("error"));
-    expect(onError).toHaveBeenCalledExactlyOnceWith(
-      "HyperFrames runtime failed to load from " + url,
-    );
+    expect(onError).toHaveBeenCalledExactlyOnceWith("Preview runtime failed to load from " + url);
     expect(probe.failed).toBe(true);
     vi.advanceTimersByTime(16000);
     expect(onError).toHaveBeenCalledOnce();

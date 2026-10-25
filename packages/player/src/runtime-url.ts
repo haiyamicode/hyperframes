@@ -8,7 +8,7 @@ declare const __HYPERFRAMES_RUNTIME_CDN_URL__: string;
 
 export function runtimeCdnUrlForVersion(version: string): string {
   if (!/^\d+\.\d+\.\d+(?:-[0-9A-Za-z.-]+)?(?:\+[0-9A-Za-z.-]+)?$/.test(version)) {
-    throw new Error(`Invalid HyperFrames runtime version: ${version}`);
+    throw new Error(`Invalid preview runtime version: ${version}`);
   }
   return `https://cdn.jsdelivr.net/npm/@hyperframes/core@${version}/dist/hyperframe.runtime.iife.js`;
 }

@@ -544,11 +544,11 @@ class HyperframesPlayer extends HTMLElement {
   /** Retain and deliver structured runtime data through the shared runtime protocol. */
   setRuntimeData(channel: string, payload: unknown): void {
     if (!/^[a-z][a-z0-9-]{0,63}$/.test(channel)) {
-      throw new Error(`Invalid HyperFrames runtime-data channel: ${channel}`);
+      throw new Error(`Invalid preview runtime-data channel: ${channel}`);
     }
     if (typeof structuredClone !== "function") {
       throw new Error(
-        "HyperFrames runtime data requires structuredClone support; refusing an unverified payload",
+        "Preview runtime data requires structuredClone support; refusing an unverified payload",
       );
     }
     const retained = structuredClone(payload);
@@ -558,7 +558,7 @@ class HyperframesPlayer extends HTMLElement {
 
   clearRuntimeData(channel: string): void {
     if (!/^[a-z][a-z0-9-]{0,63}$/.test(channel)) {
-      throw new Error(`Invalid HyperFrames runtime-data channel: ${channel}`);
+      throw new Error(`Invalid preview runtime-data channel: ${channel}`);
     }
     this._runtimeData.delete(channel);
     this._deliverRuntimeDataClear(channel);
@@ -1391,7 +1391,7 @@ class HyperframesPlayer extends HTMLElement {
     });
     const win = doc.defaultView as (Window & { __renderReady?: boolean }) | null;
     console.warn(
-      `[hyperframes-player] assets-loading timed out after ${ASSETS_READY_TIMEOUT_MS}ms, playing anyway`,
+      `[player] assets-loading timed out after ${ASSETS_READY_TIMEOUT_MS}ms, playing anyway`,
       {
         stuckMedia: pendingMedia.map(
           (el) => el.currentSrc || el.getAttribute("src") || `<${el.tagName.toLowerCase()}>`,
@@ -1555,7 +1555,7 @@ class HyperframesPlayer extends HTMLElement {
     if (applied) this._sendDisplayScale();
     if (!applied && this._ready && !this._rescaleWarned) {
       this._rescaleWarned = true;
-      console.warn("[hyperframes-player] rescale no-op after ready: zero-size player element", {
+      console.warn("[player] rescale no-op after ready: zero-size player element", {
         src: this.getAttribute("src"),
         offsetWidth: this.offsetWidth,
         offsetHeight: this.offsetHeight,
