@@ -70,6 +70,10 @@ export interface TimelineElement {
   compositionSrc?: string;
   /** Set by data-timeline-locked on the host element — disables move and trim in Studio. */
   timelineLocked?: boolean;
+  /** Set by data-timeline-no-split on the host element — the clip can't be split. */
+  noSplit?: boolean;
+  /** Set by data-timeline-no-fade on the host element — the clip shows no fade handles. */
+  noFade?: boolean;
   /** Set by data-hidden on the host element — hides the clip in preview and render. */
   hidden?: boolean;
   /** Value of data-timeline-role attribute — used to identify music vs. voiceover. */

@@ -78,6 +78,10 @@ describe("canSplitElementAt", () => {
     ).toBe(false);
   });
 
+  it("rejects elements flagged no-split", () => {
+    expect(canSplitElementAt(element({ noSplit: true }), 3)).toBe(false);
+  });
+
   it("rejects locked elements while allowing identified compositions", () => {
     expect(canSplitElementAt(element({ timelineLocked: true }), 3)).toBe(false);
     expect(

@@ -107,7 +107,7 @@ export const TimelineClip = memo(function TimelineClip({
   } as CSSProperties;
   const linkColor = linkLabelColor(el.link);
   if (linkColor) Object.assign(themeVariables, { "--clip-link-color": linkColor });
-  const hasFades = (isAudioClip || Boolean(el.hasAudio)) && !isGestureActor;
+  const hasFades = (isAudioClip || Boolean(el.hasAudio)) && !isGestureActor && !el.noFade;
   const fade = useClipFadeDraft(el);
   const badges =
     ladder === "labeled" && !isGestureActor ? (

@@ -150,6 +150,8 @@ export function createTimelineElementFromManifestClip(params: {
       if (rawSrc) entry.src = new URL(rawSrc, hostEl.baseURI).href;
     }
     if (hostEl.hasAttribute("data-hidden")) entry.hidden = true;
+    if (hostEl.hasAttribute("data-timeline-no-split")) entry.noSplit = true;
+    if (hostEl.hasAttribute("data-timeline-no-fade")) entry.noFade = true;
     const timelineRole = hostEl.getAttribute("data-timeline-role");
     if (timelineRole) entry.timelineRole = timelineRole;
     const link = hostEl.getAttribute("data-link");
@@ -342,6 +344,12 @@ export function parseTimelineFromDOM(
 
     if (el.hasAttribute("data-timeline-locked")) {
       entry.timelineLocked = true;
+    }
+    if (el.hasAttribute("data-timeline-no-split")) {
+      entry.noSplit = true;
+    }
+    if (el.hasAttribute("data-timeline-no-fade")) {
+      entry.noFade = true;
     }
     if (el.hasAttribute("data-hidden")) {
       entry.hidden = true;
