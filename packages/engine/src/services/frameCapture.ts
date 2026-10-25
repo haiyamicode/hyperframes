@@ -114,7 +114,14 @@ export type { CaptureOptions, CaptureResult, CaptureBufferResult, CapturePerfSum
 /** Called after seeking, before screenshot. Use for video frame injection or other pre-capture work.
  * `heldVideoTime` (motion-blur samples only) is the output frame's time: a video on screen at
  * both times shows its frame for `heldVideoTime`, so footage does not smear. */
-export type BeforeCaptureHook = (page: Page, time: number, heldVideoTime?: number) => Promise<void>;
+export type BeforeCaptureHook = ((
+  page: Page,
+  time: number,
+  heldVideoTime?: number,
+) => Promise<void>) & {
+  /** A hook with state of its own, for a second page; absent when the hook cannot be copied. */
+  fresh?: () => BeforeCaptureHook | null;
+};
 
 /** The per-frame wait a capture is in, worded for the stall error a user reads. */
 type CaptureStep =
@@ -5162,9 +5169,10 @@ async function captureDeVerificationFrames(
   // would share the corruption, PSNR would pass on the damaged output.
   // Seeking 0 → ascending reproduces the render's own seek order.
   const fractions = computeDeVerifySampleFractions(k);
-  // A video-free comp reads its truth on a disposable page: callbacks that run there
-  // cannot leave the render's own page changed. The video injector is tied to the render page.
-  const isolated = !session.onBeforeCapture;
+  // The truth is read on a disposable page, so callbacks that run there cannot change the
+  // render's own page. A video comp needs an injector of its own for it (the render's tracks its page).
+  const truthInjector = session.onBeforeCapture?.fresh?.() ?? null;
+  const isolated = !session.onBeforeCapture || truthInjector !== null;
   const truthPage = isolated ? await createStaticVerificationPage(session) : page;
   const seekTo = (t: number): Promise<void> => seekDeVerifyTruth(truthPage, t, !isolated);
   const frames = new Map<number, Buffer>();
@@ -5185,7 +5193,7 @@ async function captureDeVerificationFrames(
       // Video frame injection (same hook the real capture paths run) — without
       // it, <video> elements screenshot black and every video comp would
       // false-positive into the screenshot fallback.
-      if (session.onBeforeCapture) await session.onBeforeCapture(truthPage, t);
+      await (truthInjector ?? session.onBeforeCapture)?.(truthPage, t);
       // The first screenshot forces a frame, which runs rAF-driven callbacks (a count-up lands
       // a tick after seek()); waiting on rAF via evaluate deadlocks, headless fires it only
       // when a frame is produced.
