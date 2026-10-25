@@ -13,6 +13,7 @@ import { usePlayerStore } from "../../player";
 import { formatTime } from "../../player/lib/time";
 import { useStudioShellContext } from "../../contexts/StudioContext";
 import { TIMELINE_BLOCK_MIME } from "../../utils/timelineAssetDrop";
+import { getPortalRoot } from "../ui/portalRoot";
 export interface BlockPreviewInfo {
   videoUrl?: string;
   posterUrl?: string;
@@ -128,7 +129,7 @@ export const BlocksTab = memo(function BlocksTab({ onAddBlock, onPreviewBlock }:
             prompt={promptModal.prompt}
             onClose={() => setPromptModal(null)}
           />,
-          document.body,
+          getPortalRoot(),
         )}
     </div>
   );

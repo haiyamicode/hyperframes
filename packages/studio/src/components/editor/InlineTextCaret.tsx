@@ -1,6 +1,7 @@
 import { useEffect, useState } from "react";
 import { createPortal } from "react-dom";
 import type { InlineTextEditSession } from "../../hooks/useInlineTextEdit";
+import { getPortalRoot } from "../ui/portalRoot";
 
 /** The drawn caret's width on screen, whatever the preview's scale. */
 export const CARET_PX = 2;
@@ -110,7 +111,7 @@ export function InlineTextCaret({
         background: placement.color,
       }}
     />,
-    iframe.ownerDocument.body,
+    getPortalRoot(iframe.ownerDocument),
   );
 }
 

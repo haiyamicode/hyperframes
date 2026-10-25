@@ -13,6 +13,7 @@ import type { RenderJob, ResolutionPreset } from "./useRenderQueue";
 import { getPersistedRenderSettings, persistRenderSettings } from "./renderSettings";
 import { GpuEncodingToggle } from "./GpuEncodingToggle";
 import { trackStudioEvent } from "../../utils/studioTelemetry";
+import { getPortalRoot } from "../ui/portalRoot";
 
 export interface CompositionDimensions {
   width: number;
@@ -254,7 +255,7 @@ function FormatInfoTooltip({ format }: { format: "mp4" | "webm" | "mov" }) {
                 ))}
             </div>
           </div>,
-          document.body,
+          getPortalRoot(),
         )}
     </div>
   );

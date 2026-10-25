@@ -5,6 +5,7 @@ import { useMenuKeyboardNav } from "./menuKeyboardNav";
 import type { TimelineElement } from "../store/playerStore";
 import type { TimelineKeyframeTarget } from "./timelineKeyframeIdentity";
 import { menuClasses } from "../../components/ui/menuStyle";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 export interface KeyframeDiamondContextMenuState {
   x: number;
@@ -180,6 +181,6 @@ export function KeyframeDiamondContextMenu({
         Delete All Keyframes
       </button>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 }

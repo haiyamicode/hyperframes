@@ -8,6 +8,7 @@ import { cn } from "./cn";
 import { fieldBase } from "./Input";
 import { floatingMotion, POPUP_LAYER } from "./Menu";
 import type { PreviewState } from "./Button";
+import { getPortalContainer } from "./portalRoot";
 
 export interface SelectOption {
   label: string;
@@ -76,7 +77,7 @@ export function Select({
         </BaseSelect.Icon>
       </BaseSelect.Trigger>
 
-      <BaseSelect.Portal>
+      <BaseSelect.Portal container={getPortalContainer()}>
         <BaseSelect.Positioner sideOffset={4} alignItemWithTrigger={false} className={POPUP_LAYER}>
           <BaseSelect.Popup
             className={cn(

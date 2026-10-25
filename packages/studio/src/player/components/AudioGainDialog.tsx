@@ -14,6 +14,7 @@ import {
   type AudioGainClip,
   type AudioGainMode,
 } from "./audioGainPlan";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 type DialogMode = AudioGainMode | "loudness";
 
@@ -209,7 +210,7 @@ export function AudioGainDialog({
         </div>
       </div>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 }
 

@@ -8,6 +8,7 @@ import {
 } from "./inlineTextStyleRead";
 import { resolvePickerColor } from "./colorValue";
 import type { InlineTextEditSession } from "../../hooks/useInlineTextEdit";
+import { getPortalRoot } from "../ui/portalRoot";
 
 /**
  * The controls for styling the characters selected inside an open text edit.
@@ -153,7 +154,7 @@ export function InlineTextToolbar({
         onToggle={(on) => apply({ "text-decoration-line": on ? "underline" : null })}
       />
     </div>,
-    iframe.ownerDocument.body,
+    getPortalRoot(iframe.ownerDocument),
   );
 }
 

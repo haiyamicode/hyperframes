@@ -14,6 +14,7 @@ import {
 } from "react";
 import { cn } from "./cn";
 import { floatingMotion, POPUP_LAYER } from "./Menu";
+import { getPortalContainer } from "./portalRoot";
 
 interface TooltipProps {
   label: string;
@@ -50,7 +51,7 @@ export function Tooltip({
           "aria-describedby": open && !disabled ? tooltipId : children.props["aria-describedby"],
         })}
       </BaseTooltip.Trigger>
-      <BaseTooltip.Portal>
+      <BaseTooltip.Portal container={getPortalContainer()}>
         <BaseTooltip.Positioner
           anchor={() => boxRef.current?.firstElementChild ?? null}
           side={side}

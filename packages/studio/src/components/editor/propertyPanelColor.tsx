@@ -13,6 +13,7 @@ import { resolveFloatingPanelPosition, type FloatingPosition } from "./floatingP
 import { colorFromCss, FIELD, LABEL } from "./propertyPanelHelpers";
 import { useTrackDesignInput } from "../../contexts/DesignPanelInputContext";
 import { useInspectorGestureTransaction } from "./useInspectorGestureTransaction";
+import { getPortalRoot } from "../ui/portalRoot";
 
 const COLOR_PICKER_SIZE = { width: 292, height: 386 };
 
@@ -448,7 +449,7 @@ export function ColorField({
             </label>
           </div>
         </div>,
-        document.body,
+        getPortalRoot(),
       )
     : null;
 

@@ -11,6 +11,7 @@ import { ClipMenuLinkItems } from "./clipMenuLinkItems";
 import { menuClasses } from "../../components/ui/menuStyle";
 import { useTimelineEditContextOptional } from "../../contexts/TimelineEditContext";
 import { SPLIT_SHORTCUT_HINT } from "./studioShortcuts";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 const MENU_MARGIN = 8;
 
@@ -263,6 +264,6 @@ export const ClipContextMenu = memo(function ClipContextMenu({
         {tools && <ClipMenuLinkItems part="delete" element={element} onClose={onClose} />}
       </div>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 });

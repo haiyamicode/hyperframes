@@ -9,6 +9,7 @@ import { createPortal } from "react-dom";
 import { useContextMenuDismiss } from "../../hooks/useContextMenuDismiss";
 import { AUTOMATION_SHAPES, type AutomationShapeId } from "./automationShapes";
 import { menuClasses } from "../../components/ui/menuStyle";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 interface AutomationSelectionMenuProps {
   x: number;
@@ -76,6 +77,6 @@ export const AutomationSelectionMenu = memo(function AutomationSelectionMenu({
         Simplify
       </button>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 });

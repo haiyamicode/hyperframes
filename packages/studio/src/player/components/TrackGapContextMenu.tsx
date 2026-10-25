@@ -2,6 +2,7 @@ import { memo } from "react";
 import { createPortal } from "react-dom";
 import { useContextMenuDismiss } from "../../hooks/useContextMenuDismiss";
 import { menuClasses } from "../../components/ui/menuStyle";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 interface TrackGapContextMenuProps {
   x: number;
@@ -108,6 +109,6 @@ export const TrackGapContextMenu = memo(function TrackGapContextMenu({
         <span>Close all gaps</span>
       </button>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 });

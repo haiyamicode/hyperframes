@@ -8,6 +8,7 @@ import { usePlayerStore, type TimelineElement } from "../store/playerStore";
 import { clipSyncState, type ClipSyncState } from "./clipSync";
 import { useMenuKeyboardNav } from "./menuKeyboardNav";
 import { menuClasses } from "../../components/ui/menuStyle";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 const stop = (e: SyntheticEvent) => e.stopPropagation();
 
@@ -72,7 +73,7 @@ function SyncMenu({
         Slip into Sync
       </button>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 }
 

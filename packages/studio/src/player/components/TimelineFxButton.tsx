@@ -24,6 +24,7 @@ import {
   useAuditionTransport,
   type AuditionSpan,
 } from "../../components/editor/useAuditionTransport.js";
+import { getPortalRoot } from "../../components/ui/portalRoot";
 
 /**
  * Naming a group is the moment the whole feature is explained.
@@ -238,7 +239,7 @@ export function TimelineFxButton(props: TimelineFxButtonProps) {
                 props.onGroupClips(label);
               }}
             />,
-            document.body,
+            getPortalRoot(),
           )}
       </div>
     );
@@ -289,7 +290,7 @@ export function TimelineFxButton(props: TimelineFxButtonProps) {
             }}
             onOpenRack={props.onOpenRack}
           />,
-          document.body,
+          getPortalRoot(),
         )}
     </div>
   );

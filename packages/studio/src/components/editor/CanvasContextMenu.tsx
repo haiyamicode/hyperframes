@@ -34,6 +34,7 @@ import {
   type ZOrderPatch,
 } from "./canvasContextMenuZOrder";
 import { menuClasses } from "../ui/menuStyle";
+import { getPortalRoot } from "../ui/portalRoot";
 
 interface CanvasContextMenuProps {
   /** Viewport x of the right-click event. */
@@ -271,6 +272,6 @@ export const CanvasContextMenu = memo(function CanvasContextMenu({
         </button>
       )}
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 });

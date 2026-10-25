@@ -7,6 +7,7 @@ import { useLinkedClipPreferences } from "../utils/linkedClipPreferences";
 import { Tooltip } from "./ui";
 import { flatActive, flatIdle } from "./timelineToolbarStyles";
 import { menuClasses } from "./ui/menuStyle";
+import { getPortalRoot } from "./ui/portalRoot";
 
 function SyncIndicatorMenu({ x, y, onClose }: { x: number; y: number; onClose: () => void }) {
   const menuRef = useContextMenuDismiss(onClose);
@@ -35,7 +36,7 @@ function SyncIndicatorMenu({ x, y, onClose }: { x: number; y: number; onClose: (
         Show out-of-sync indicators
       </button>
     </div>,
-    document.body,
+    getPortalRoot(),
   );
 }
 
