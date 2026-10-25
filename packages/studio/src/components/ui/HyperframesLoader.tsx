@@ -1,13 +1,13 @@
-import { HyperframesMark } from "./HyperframesMark";
+import { Spinner } from "./Spinner";
 
 export interface HyperframesLoaderProps {
-  /** Status text shown below the mark. */
+  /** Status text shown below the spinner. */
   title: string;
   /** Optional secondary detail line. */
   detail?: string;
   /** Optional monospace third line for IDs, counts, or percentages. */
   mono?: string;
-  /** Pixel size of the mark itself; status text scales independently. */
+  /** Pixel size of the spinner itself; status text scales independently. */
   size?: number;
   /** Optional normalized progress value from 0 to 1. */
   progress?: number;
@@ -33,7 +33,7 @@ export function HyperframesLoader({
         style={{ width: markFrameSize, height: markFrameSize }}
         draggable={false}
       >
-        <HyperframesMark className="hf-loader-mark" width={size} height={size} />
+        <Spinner className="hf-loader-mark" width={size} height={size} />
       </div>
       <div className="hf-loader-title">{title}</div>
       {detail && <div className="hf-loader-detail">{detail}</div>}

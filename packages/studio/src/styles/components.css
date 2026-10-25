@@ -520,10 +520,22 @@
 .hf-loader-mark {
   display: block;
   overflow: visible;
-  filter: drop-shadow(0 0 7px rgba(79, 219, 94, 0.2));
+  color: var(--hf-heading, #f4f4f5);
   user-select: none;
   -webkit-user-select: none;
   -webkit-user-drag: none;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .hf-loader-mark {
+    animation: hf-loader-spin 0.9s linear infinite;
+  }
+}
+
+@keyframes hf-loader-spin {
+  to {
+    transform: rotate(360deg);
+  }
 }
 
 .hf-loader-title {
@@ -860,14 +872,6 @@
   .hf-topology-seal {
     animation: hf-topology-seal 224ms cubic-bezier(0.23, 1, 0.32, 1) both;
   }
-
-  .hf-topology-seal path:first-of-type {
-    animation: hf-topology-seal-left 224ms cubic-bezier(0.23, 1, 0.32, 1) both;
-  }
-
-  .hf-topology-seal path:nth-of-type(2) {
-    animation: hf-topology-seal-right 224ms cubic-bezier(0.23, 1, 0.32, 1) both;
-  }
 }
 
 @keyframes hf-topology-reveal {
@@ -917,30 +921,11 @@
   }
 }
 
-@keyframes hf-topology-seal-left {
-  from {
-    transform: translate3d(-9px, 0, 0);
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
-@keyframes hf-topology-seal-right {
-  from {
-    transform: translate3d(9px, 0, 0);
-  }
-  to {
-    transform: translate3d(0, 0, 0);
-  }
-}
-
 @media (prefers-reduced-motion: reduce) {
   .hf-topology-contour,
   .hf-topology-field,
   .hf-topology-target,
-  .hf-topology-seal,
-  .hf-topology-seal path {
+  .hf-topology-seal {
     animation: none;
     transform: none;
   }

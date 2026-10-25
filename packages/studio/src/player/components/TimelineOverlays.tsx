@@ -216,11 +216,14 @@ export function TimelineGapMenuOverlay() {
   );
 }
 
+/**
+ * The composed timeline's overlays. The Shift+drag range popover, which drafts an agent prompt
+ * about the composition, and the hint that advertises it are left out; hosts that want them
+ * render `Timeline.EditPopover` and `Timeline.ShortcutHint`.
+ */
 export function TimelineOverlays() {
   return (
     <>
-      <TimelineShortcutHintOverlay />
-      <TimelineEditPopoverOverlay />
       <TimelineKeyframeMenuOverlay />
       <TimelineClipMenuOverlay />
       <TimelineGapMenuOverlay />
