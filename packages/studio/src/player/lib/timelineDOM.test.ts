@@ -184,6 +184,41 @@ describe("parseTimelineFromDOM — edit limits", () => {
     expect(pic.maxDuration).toBeUndefined();
     expect(pic.laneKind).toBeUndefined();
   });
+
+  it("reads a lock on both the DOM and manifest paths", () => {
+    const doc = makeDoc(`
+      <div data-composition-id="root">
+        <audio id="line" class="clip" data-start="0" data-duration="2" data-timeline-locked></audio>
+      </div>
+    `);
+    const fromDom = parseTimelineFromDOM(doc, 10).find((e) => e.domId === "line")!;
+    const fromManifest = createTimelineElementFromManifestClip({
+      clip: {
+        id: "line",
+        label: "Line",
+        kind: "audio",
+        tagName: "audio",
+        start: 0,
+        duration: 2,
+        track: 0,
+        compositionId: null,
+        parentCompositionId: null,
+        compositionSrc: null,
+        assetUrl: null,
+      },
+      fallbackIndex: 0,
+      doc,
+      hostEl: doc.getElementById("line"),
+    });
+    for (const element of [fromDom, fromManifest]) {
+      expect(element.timelineLocked).toBe(true);
+      expect(getTimelineEditCapabilities(element)).toEqual({
+        canMove: false,
+        canTrimStart: false,
+        canTrimEnd: false,
+      });
+    }
+  });
 });
 
 describe("parseTimelineFromDOM — in-point read as playback reads it", () => {

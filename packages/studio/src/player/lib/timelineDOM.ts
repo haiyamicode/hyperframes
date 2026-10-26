@@ -70,8 +70,9 @@ function resolveClipTag(clip: ClipManifestClip): string {
   return clip.tagName || clip.kind || "div";
 }
 
-/** The host's limits on moves and trims (`data-timeline-no-move`, `-no-trim-*`, `-max-duration`, `-lane-kind`). */
+/** The host's limits on moves and trims (`data-timeline-locked`, `-no-move`, `-no-trim-*`, `-max-duration`, `-lane-kind`). */
 function readTimelineEditLimits(el: Element, entry: TimelineElement): void {
+  if (el.hasAttribute("data-timeline-locked")) entry.timelineLocked = true;
   if (el.hasAttribute("data-timeline-no-move")) entry.noMove = true;
   if (el.hasAttribute("data-timeline-no-trim-start")) entry.noTrimStart = true;
   if (el.hasAttribute("data-timeline-no-trim-end")) entry.noTrimEnd = true;
@@ -354,9 +355,6 @@ export function parseTimelineFromDOM(
     const domAutomation = el.getAttribute("data-automation");
     if (domAutomation) entry.automation = domAutomation;
 
-    if (el.hasAttribute("data-timeline-locked")) {
-      entry.timelineLocked = true;
-    }
     if (el.hasAttribute("data-timeline-no-split")) {
       entry.noSplit = true;
     }
