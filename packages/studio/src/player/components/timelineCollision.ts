@@ -151,6 +151,10 @@ export function resolveZoneDropPlacement(input: {
   minStart?: number;
   /** Where the dragged clip sits now. */
   origin?: { track: number; start: number };
+  /** The lanes the clip may land on; absent: any lane of its zone. */
+  lanes?: ReadonlySet<number>;
+  /** False: no new track opens — an aim at no allowed lane keeps the clip on its own. */
+  trackInsert?: boolean;
 }): { track: number; insertRow: number | null; start: number } {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;
@@ -158,6 +162,7 @@ export function resolveZoneDropPlacement(input: {
 
   if (
     deliberateInsertRow !== null &&
+    input.trackInsert !== false &&
     isInsertAllowedForZone(deliberateInsertRow, audioRow, isAudio, input.allowedInsertRows)
   ) {
     return { track: desiredTrack, insertRow: deliberateInsertRow, start };
@@ -170,8 +175,24 @@ export function resolveZoneDropPlacement(input: {
   const desired =
     aim.kind === "member" ? aim.track : clampTrackToZone(aim.track, order, zoneBoundary, isAudio);
   const zoneTracks = order.filter(
-    (t) => !input.groupTracks?.has(t) && audioTracks.has(t) === isAudio,
+    (t) =>
+      !input.groupTracks?.has(t) &&
+      audioTracks.has(t) === isAudio &&
+      (!input.lanes || input.lanes.has(t)),
   );
+  if (!zoneTracks.includes(desired) && input.trackInsert === false && input.origin) {
+    const { track, start: originStart } = input.origin;
+    const freeStart = resolveNearestFreeStart(
+      elements,
+      track,
+      start,
+      duration,
+      dragKey,
+      minStart,
+      originStart,
+    );
+    return { track, insertRow: null, start: freeStart };
+  }
   // Only when the aim is outside the rows, or the clip's zone has no row yet.
   if (!zoneTracks.includes(desired)) {
     const desiredRow = order.indexOf(desired);

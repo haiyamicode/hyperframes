@@ -74,6 +74,13 @@ export interface TimelineElement {
   noSplit?: boolean;
   /** Set by data-timeline-no-fade on the host element — the clip shows no fade handles. */
   noFade?: boolean;
+  /** Set by data-timeline-no-trim-start / -end on the host element — that edge can't be trimmed. */
+  noTrimStart?: boolean;
+  noTrimEnd?: boolean;
+  /** `data-timeline-max-duration`, seconds — the longest a trim may make the clip. */
+  maxDuration?: number;
+  /** `data-timeline-lane-kind` — the clip moves only to lanes whose other clips share its kind. */
+  laneKind?: string;
   /** Set by data-hidden on the host element — hides the clip in preview and render. */
   hidden?: boolean;
   /** Value of data-timeline-role attribute — used to identify music vs. voiceover. */

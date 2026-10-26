@@ -10,6 +10,7 @@ import { isTimelineIgnoredElement } from "./timelineElementHelpers";
 import { clipTimingStart, resolveClipTimingBasis } from "../../hooks/gsapShared";
 import { toAuthoredStart } from "../store/timelineElement";
 import { computeResizePreview } from "../components/timelineClipDragPreview";
+import { getTimelineEditCapabilities } from "../components/timelineEditCapabilities";
 import type { TimelineElement } from "../store/playerStore";
 import {
   MAX_PLAYBACK_RATE,
@@ -141,6 +142,37 @@ describe("parseTimelineFromDOM — media in-point", () => {
       { scroll: null, pps: 100, buildSnapTargets: () => [] },
     );
     expect(preview.previewDuration).toBe(0.9);
+  });
+});
+
+describe("parseTimelineFromDOM — edit limits", () => {
+  it("reads which edges trim, the longest a trim may make the clip, and its lane kind", () => {
+    const doc = makeDoc(`
+      <div data-composition-id="root">
+        <audio id="vo" class="clip" data-start="0" data-duration="2" data-timeline-no-trim-start
+          data-timeline-no-trim-end data-timeline-lane-kind="voiceover"></audio>
+        <audio id="gap" class="clip" data-start="2" data-duration="1" data-timeline-no-trim-start
+          data-timeline-max-duration="60" data-timeline-lane-kind="voiceover"></audio>
+        <img id="pic" class="clip" data-start="0" data-duration="3" data-timeline-max-duration="x" />
+      </div>
+    `);
+    const rows = parseTimelineFromDOM(doc, 10);
+    const vo = rows.find((e) => e.domId === "vo")!;
+    const gap = rows.find((e) => e.domId === "gap")!;
+    const pic = rows.find((e) => e.domId === "pic")!;
+    expect(vo).toMatchObject({ noTrimStart: true, noTrimEnd: true, laneKind: "voiceover" });
+    expect(getTimelineEditCapabilities(vo)).toEqual({
+      canMove: true,
+      canTrimStart: false,
+      canTrimEnd: false,
+    });
+    expect(gap).toMatchObject({ noTrimStart: true, maxDuration: 60, laneKind: "voiceover" });
+    expect(getTimelineEditCapabilities(gap)).toMatchObject({
+      canTrimStart: false,
+      canTrimEnd: true,
+    });
+    expect(pic.maxDuration).toBeUndefined();
+    expect(pic.laneKind).toBeUndefined();
   });
 });
 

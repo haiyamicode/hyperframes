@@ -973,6 +973,10 @@
       "packages/studio/src/player/components/TimelineCanvas.tsx",
       "packages/studio/src/player/components/TimelineClip.tsx",
       "packages/studio/src/player/components/TimelineClipDiamonds.tsx",
+      // useTimelineClipDrag (CRITICAL cognitive) pre-dates the lane-kind work,
+      // which only threads a trackInsert flag through it; touching the file
+      // re-flags the inherited complexity.
+      "packages/studio/src/player/components/useTimelineClipDrag.ts",
       // Sub-composition html/body scoping fix: these files carry pre-existing
       // CRITICAL/HIGH functions (inlineSubCompositions, bundleToSingleHtml,
       // mountCompositionContent/loadCompositions, scopeSelector/

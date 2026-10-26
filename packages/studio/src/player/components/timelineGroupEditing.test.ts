@@ -35,6 +35,15 @@ describe("buildTimelineGroupResizeMembers (legacy 36413da7f semantics)", () => {
     expect(buildTimelineGroupResizeMembers([a, locked], keys("a", "b"), "a", "end")).toBeNull();
   });
 
+  it("degrades when a member can't take that edge's trim", () => {
+    const a = el("a");
+    const speech = el("b", { noTrimStart: true, noTrimEnd: true });
+    const pause = el("c", { noTrimStart: true });
+    expect(buildTimelineGroupResizeMembers([a, speech], keys("a", "b"), "a", "end")).toBeNull();
+    expect(buildTimelineGroupResizeMembers([a, pause], keys("a", "c"), "a", "start")).toBeNull();
+    expect(buildTimelineGroupResizeMembers([a, pause], keys("a", "c"), "a", "end")).not.toBeNull();
+  });
+
   it("degrades when a member has no patch target", () => {
     const a = el("a");
     const noTarget = el("c", { domId: undefined, selector: undefined });
@@ -112,6 +121,20 @@ describe("resolveTimelineGroupResizeChanges (rigid group patch set)", () => {
     expect(changes.map((c) => [c.key, c.start, c.duration])).toEqual([
       ["a", 1.5, 2.5],
       ["b", 4.5, 3.5],
+    ]);
+  });
+
+  it("holds every member within its longest length, on either edge", () => {
+    const a = el("a", { tag: "text", start: 2, duration: 2 });
+    const b = el("b", { tag: "text", start: 6, duration: 3, maxDuration: 4 });
+    const end = buildTimelineGroupResizeMembers([a, b], keys("a", "b"), "a", "end")!;
+    expect(resolveTimelineGroupResizeChanges(end, "end", 5).map((c) => c.duration)).toEqual([3, 4]);
+    const start = buildTimelineGroupResizeMembers([a, b], keys("a", "b"), "a", "start")!;
+    expect(
+      resolveTimelineGroupResizeChanges(start, "start", -1.5).map((c) => [c.start, c.duration]),
+    ).toEqual([
+      [1, 3],
+      [5, 4],
     ]);
   });
 

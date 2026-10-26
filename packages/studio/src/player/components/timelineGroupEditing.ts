@@ -90,6 +90,8 @@ export interface TimelineGroupTimingMember {
   playbackStart?: number;
   playbackRate?: number;
   minStart?: number;
+  /** The longest the member may become (see TimelineElement.maxDuration). */
+  maxDuration?: number;
 }
 
 export type TimelineGroupResizeEdge = "start" | "end";
@@ -135,16 +137,19 @@ export function clampTimelineGroupResizeDelta(
 ): number {
   if (members.length === 0) return 0;
 
+  const growth = Math.min(
+    ...members.map((member) => (member.maxDuration ?? Infinity) - member.duration),
+  );
   if (edge === "end") {
     const minDelta = Math.max(...members.map((member) => minDuration - member.duration));
-    return roundTimelineTime(Math.max(rawDelta, minDelta));
+    return roundTimelineTime(clamp(rawDelta, minDelta, Math.max(minDelta, growth)));
   }
 
   // Rigid group: the applied delta is bounded by the most-constrained member.
   const bounds = members.map((member) =>
     clipStartTrimDeltaBounds(member, member.minStart ?? 0, minDuration),
   );
-  const minDelta = ceilTimelineTime(Math.max(...bounds.map((b) => b.minDelta)));
+  const minDelta = ceilTimelineTime(Math.max(-growth, ...bounds.map((b) => b.minDelta)));
   const maxDelta = Math.min(...bounds.map((b) => b.maxDelta));
   const delta = roundTimelineTime(clamp(rawDelta, minDelta, maxDelta));
   const roundedPastTightestMember = delta > maxDelta + SAVED_MEDIA_OFFSET_TOLERANCE;
@@ -213,6 +218,8 @@ function canTrimEdge(element: TimelineElement, edge: TimelineGroupResizeEdge): b
     playbackStartAttr: element.playbackStartAttr,
     sourceDuration: element.sourceDuration,
     timelineLocked: element.timelineLocked,
+    noTrimStart: element.noTrimStart,
+    noTrimEnd: element.noTrimEnd,
   });
   return edge === "start" ? caps.canTrimStart : caps.canTrimEnd;
 }
@@ -248,6 +255,7 @@ export function buildTimelineGroupResizeMembers(
         : element.playbackStart,
     playbackRate: element.playbackRate,
     minStart: clampToHostStart(element, 0),
+    maxDuration: element.maxDuration,
   }));
 }
 

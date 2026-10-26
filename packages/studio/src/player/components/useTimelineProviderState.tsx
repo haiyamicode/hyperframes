@@ -229,6 +229,7 @@ export function useTimelineProviderState({
     onStackingPatches: zSyncEnabled ? applyStackingPatches : undefined,
     refreshAfterLaneMove,
     sessionEpoch,
+    trackInsert: editContext.trackInsert !== false,
   });
   const assetDrop = useTimelineAssetDrop({
     scrollRef,

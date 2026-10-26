@@ -57,6 +57,8 @@ export interface DragPreviewContext {
   audioTracks?: ReadonlySet<number>;
   /** Seconds between the ruler's lines; 0 or absent when snapping is off. */
   gridStep?: number;
+  /** False: a drag never opens a new track (see TimelineEditCallbacks.trackInsert). */
+  trackInsert?: boolean;
 }
 
 export function createKeyboardClipDrag(
@@ -114,9 +116,10 @@ const INSERT_SEAM_PX = CLIP_Y;
 function physicalInsertRow(
   rowFloat: number,
   y: number,
-  ctx: Pick<DragPreviewContext, "trackOrder" | "allowedInsertRows">,
+  ctx: Pick<DragPreviewContext, "trackOrder" | "allowedInsertRows" | "trackInsert">,
   geometry: TimelineRowGeometry,
 ) {
+  if (ctx.trackInsert === false) return null;
   const boundary = Math.round(rowFloat);
   const nearSeam = Math.abs(y - geometry.getRowTop(boundary)) <= INSERT_SEAM_PX;
   const row = nearSeam
@@ -141,6 +144,22 @@ function dragRowAim(
   }
   const rowFloat = geometry.getRowFromY(y);
   return { rowFloat, insertRow: physicalInsertRow(rowFloat, y, ctx, geometry) };
+}
+
+/** The lanes a clip with a lane kind may take: its own, and those whose other clips share its kind. */
+function laneKindTracks(
+  element: TimelineElement,
+  ctx: DragPreviewContext,
+): ReadonlySet<number> | undefined {
+  if (element.laneKind === undefined) return undefined;
+  const key = element.key ?? element.id;
+  const lanes = new Set(ctx.trackOrder);
+  for (const other of ctx.elements) {
+    if ((other.key ?? other.id) !== key && other.laneKind !== element.laneKind)
+      lanes.delete(other.track);
+  }
+  lanes.add(element.track);
+  return lanes;
 }
 
 /** The drop decision for the pointer's row (see resolveZoneDropPlacement). */
@@ -170,6 +189,8 @@ function resolveDropPlacement(
     isAudio: isAudioTimelineElement(drag.element),
     minStart: group.floor,
     origin: { track: drag.element.track, start: drag.element.start },
+    lanes: laneKindTracks(drag.element, ctx),
+    trackInsert: ctx.trackInsert,
   });
 }
 
@@ -368,8 +389,17 @@ export function computeResizePreview(
   const video = ctx.elements
     ? heldPartnerVideoBounds(resize.element, ctx.elements, ctx.gestureKeys ?? new Set())
     : null;
-  const minStart = Math.max(clampToHostStart(resize.element, 0), video?.start ?? 0);
-  const maxEnd = Math.min(resize.element.start + sourceRemaining, video?.end ?? Infinity);
+  const { start, duration, maxDuration = Infinity } = resize.element;
+  const minStart = Math.max(
+    clampToHostStart(resize.element, 0),
+    video?.start ?? 0,
+    Math.min(start, start + duration - maxDuration),
+  );
+  const maxEnd = Math.min(
+    start + sourceRemaining,
+    video?.end ?? Infinity,
+    Math.max(start + duration, start + maxDuration),
+  );
   let nextResize = resolveTimelineResize(
     {
       start: resize.element.start,

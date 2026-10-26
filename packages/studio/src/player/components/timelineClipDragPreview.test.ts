@@ -937,3 +937,77 @@ describe("an audio clip stays inside its partner video", () => {
     expect(trim("end", 50, ["v"]).previewDuration).toBe(58);
   });
 });
+
+describe("computeDragPreview — lane kinds, without new tracks", () => {
+  const ofKind = (element: TimelineElement, laneKind: string) => ({ ...element, laneKind });
+  const image = ofKind(clip("image", 0, 0, 4, 2, "img"), "visual");
+  const speech = ofKind(clip("speech", 1, 0, 3, 0, "audio"), "voiceover");
+  const music = ofKind(clip("music", 2, 0, 8, 0, "audio"), "music");
+  const pause = ofKind(clip("pause", 3, 10, 1, 0, "audio"), "voiceover");
+  const elements = [image, speech, music, pause];
+
+  function aim(rowFloat: number): DraggedClipState {
+    const { drag, clientX } = horizontalDrag(speech, 1.5, 0);
+    return computeDragPreview(drag, clientX, yForRow(rowFloat), {
+      ...ctx(undefined, elements),
+      trackOrder: [0, 1, 2, 3],
+      audioTracks: new Set([1, 2, 3]),
+      trackInsert: false,
+    });
+  }
+
+  it("moves to a lane whose clips share its kind", () => {
+    expect(aim(3.5)).toMatchObject({ previewTrack: 3, insertRow: null, previewStart: 0 });
+  });
+
+  it("stays on its own lane when aimed at another kind's", () => {
+    expect(aim(2.5)).toMatchObject({ previewTrack: 1, insertRow: null, previewStart: 0 });
+    expect(aim(0.5)).toMatchObject({ previewTrack: 1, insertRow: null });
+  });
+
+  it("opens no track at a seam or past the rows", () => {
+    for (const rowFloat of [-0.6, 2.02]) {
+      expect(aim(rowFloat)).toMatchObject({ previewTrack: 1, insertRow: null });
+    }
+    expect(aim(4.6)).toMatchObject({ previewTrack: 3, insertRow: null });
+  });
+});
+
+describe("computeResizePreview — the longest a clip may become", () => {
+  const pause = { ...clip("pause", 0, 2, 1, 0, "audio"), maxDuration: 60 };
+  const trim = (edge: "start" | "end", clientX: number) =>
+    computeResizePreview(
+      {
+        element: pause,
+        edge,
+        originClientX: 0,
+        previewStart: 2,
+        previewDuration: 1,
+        started: true,
+      },
+      clientX,
+      { scroll: fakeScroll(), pps: 10, buildSnapTargets: () => [] },
+    );
+
+  it("stops a tail trim at it", () => {
+    expect(trim("end", 1000).previewDuration).toBe(60);
+    expect(trim("end", 100).previewDuration).toBe(11);
+  });
+
+  it("stops a head trim at it", () => {
+    const card = { ...clip("card", 0, 100, 1, 0, "div"), maxDuration: 2 };
+    const result = computeResizePreview(
+      {
+        element: card,
+        edge: "start",
+        originClientX: 0,
+        previewStart: 100,
+        previewDuration: 1,
+        started: true,
+      },
+      -1000,
+      { scroll: fakeScroll(), pps: 10, buildSnapTargets: () => [] },
+    );
+    expect(result).toMatchObject({ previewStart: 99, previewDuration: 2 });
+  });
+});

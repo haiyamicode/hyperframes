@@ -92,6 +92,8 @@ interface UseTimelineClipDragInput {
   onStackingPatches?: (patches: StackingPatch[]) => Promise<unknown> | void;
   refreshAfterLaneMove?: () => void;
   sessionEpoch?: number;
+  /** False: drags never open a new track (see TimelineEditCallbacks.trackInsert). */
+  trackInsert?: boolean;
 }
 
 export function useTimelineClipDrag({
@@ -113,6 +115,7 @@ export function useTimelineClipDrag({
   onStackingPatches,
   refreshAfterLaneMove,
   sessionEpoch = 0,
+  trackInsert,
 }: UseTimelineClipDragInput) {
   const getClipCapabilities = useTimelineClipCapabilities();
   const commitGestureRef = useRef<() => void>(() => {});
@@ -290,6 +293,8 @@ export function useTimelineClipDrag({
   onStackingPatchesRef.current = onStackingPatches;
   const refreshAfterLaneMoveRef = useRef(refreshAfterLaneMove);
   refreshAfterLaneMoveRef.current = refreshAfterLaneMove;
+  const trackInsertRef = useRef(trackInsert);
+  trackInsertRef.current = trackInsert;
 
   const clipDragScrollRaf = useRef(0);
   const clipDragPointerRef = useRef<{
@@ -321,6 +326,7 @@ export function useTimelineClipDrag({
         buildSnapTargets,
         audioTracks: dragAudioTracksRef.current,
         gridStep: snapGridStep(),
+        trackInsert: trackInsertRef.current,
       });
     },
     [
@@ -520,7 +526,9 @@ export function useTimelineClipDrag({
     const pickup = (event: KeyboardEvent, viewport: HTMLDivElement) => {
       const target = timelineKeyboardEventTarget(event.target, viewport);
       const key = target?.dataset.elId;
-      if (key === undefined || !onMoveElementRef.current) return;
+      // A keyboard pickup only moves a clip to a new track.
+      if (key === undefined || !onMoveElementRef.current || trackInsertRef.current === false)
+        return;
       const element = getTimelineElementIndexes(elementsRef.current).byKey.get(key);
       if (!element || !getClipCapabilities(element).canMove) return;
       event.preventDefault();

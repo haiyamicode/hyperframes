@@ -135,6 +135,8 @@ export interface TimelineEditCallbacks {
   onRazorSplitAll?: (splitTime: number) => Promise<void> | void;
   onFreezeFrame?: (element: TimelineElement, time: number) => Promise<void> | void;
   clipMenuTools?: boolean;
+  /** False: a clip drag never opens a new track; clips move only between existing lanes. */
+  trackInsert?: boolean;
   onNotice?: (message: string, tone?: "error" | "info") => void;
   onDeleteKeyframe?: (elementId: string, keyframe: TimelineKeyframeTarget) => void;
   onDeleteAllKeyframes?: (element: TimelineElement, animationId?: string) => void;
