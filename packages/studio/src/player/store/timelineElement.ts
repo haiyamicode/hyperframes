@@ -74,6 +74,8 @@ export interface TimelineElement {
   noSplit?: boolean;
   /** Set by data-timeline-no-fade on the host element — the clip shows no fade handles. */
   noFade?: boolean;
+  /** Set by data-timeline-no-move on the host element — the clip keeps its place; trims still apply. */
+  noMove?: boolean;
   /** Set by data-timeline-no-trim-start / -end on the host element — that edge can't be trimmed. */
   noTrimStart?: boolean;
   noTrimEnd?: boolean;

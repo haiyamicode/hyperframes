@@ -11,6 +11,7 @@ import { clipTimingStart, resolveClipTimingBasis } from "../../hooks/gsapShared"
 import { toAuthoredStart } from "../store/timelineElement";
 import { computeResizePreview } from "../components/timelineClipDragPreview";
 import { getTimelineEditCapabilities } from "../components/timelineEditCapabilities";
+import { canMoveTimelineElement } from "../components/timelineAuthoredMoveTarget";
 import type { TimelineElement } from "../store/playerStore";
 import {
   MAX_PLAYBACK_RATE,
@@ -146,13 +147,14 @@ describe("parseTimelineFromDOM — media in-point", () => {
 });
 
 describe("parseTimelineFromDOM — edit limits", () => {
-  it("reads which edges trim, the longest a trim may make the clip, and its lane kind", () => {
+  it("reads whether the clip moves, which edges trim, its longest length and its lane kind", () => {
     const doc = makeDoc(`
       <div data-composition-id="root">
         <audio id="vo" class="clip" data-start="0" data-duration="2" data-timeline-no-trim-start
           data-timeline-no-trim-end data-timeline-lane-kind="voiceover"></audio>
-        <audio id="gap" class="clip" data-start="2" data-duration="1" data-timeline-no-trim-start
-          data-timeline-max-duration="60" data-timeline-lane-kind="voiceover"></audio>
+        <audio id="gap" class="clip" data-start="2" data-duration="1" data-timeline-no-move
+          data-timeline-no-trim-start data-timeline-max-duration="60"
+          data-timeline-lane-kind="voiceover"></audio>
         <img id="pic" class="clip" data-start="0" data-duration="3" data-timeline-max-duration="x" />
       </div>
     `);
@@ -166,11 +168,19 @@ describe("parseTimelineFromDOM — edit limits", () => {
       canTrimStart: false,
       canTrimEnd: false,
     });
-    expect(gap).toMatchObject({ noTrimStart: true, maxDuration: 60, laneKind: "voiceover" });
-    expect(getTimelineEditCapabilities(gap)).toMatchObject({
+    expect(gap).toMatchObject({
+      noMove: true,
+      noTrimStart: true,
+      maxDuration: 60,
+      laneKind: "voiceover",
+    });
+    expect(getTimelineEditCapabilities(gap)).toEqual({
+      canMove: false,
       canTrimStart: false,
       canTrimEnd: true,
     });
+    expect(canMoveTimelineElement(gap)).toBe(false);
+    expect(canMoveTimelineElement(vo)).toBe(true);
     expect(pic.maxDuration).toBeUndefined();
     expect(pic.laneKind).toBeUndefined();
   });

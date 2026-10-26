@@ -44,6 +44,7 @@ export function getTimelineEditCapabilities(input: {
   playbackStartAttr?: "media-start" | "playback-start";
   sourceDuration?: number;
   timelineLocked?: boolean;
+  noMove?: boolean;
   noTrimStart?: boolean;
   noTrimEnd?: boolean;
 }): TimelineEditCapabilities {
@@ -55,7 +56,7 @@ export function getTimelineEditCapabilities(input: {
   const hasFiniteDuration = Number.isFinite(input.duration) && input.duration > 0;
   const hasDeterministicWindow = isDeterministicTimelineWindow(input);
   return {
-    canMove: canPatch && (hasDeterministicWindow || hasFiniteDuration),
+    canMove: canPatch && !input.noMove && (hasDeterministicWindow || hasFiniteDuration),
     canTrimEnd: canPatch && hasFiniteDuration && !input.noTrimEnd,
     canTrimStart: canPatch && hasFiniteDuration && !input.noTrimStart,
   };
