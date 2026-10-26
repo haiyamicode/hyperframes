@@ -19,6 +19,7 @@ const RENDERED_FIELDS: readonly (keyof TimelineElement)[] = [
   "fadeOut",
   "src",
   "link",
+  "label",
 ];
 
 /** Whether a derived timeline changes any field that affects rendering. */

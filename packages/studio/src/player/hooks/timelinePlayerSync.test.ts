@@ -14,6 +14,7 @@ describe("timelineElementsChanged", () => {
     ["fade in", { fadeIn: 1 }],
     ["fade out", { fadeOut: 1 }],
     ["link", { link: "lk-1" }],
+    ["label (a renamed clip)", { label: "Intro" }],
     ["source (re-pointed at its preview copy)", { src: "clip1.mp4?hf-proxy=h264" }],
   ])("sees a clip whose %s changed with no timing change", (_name, change) => {
     expect(timelineElementsChanged([clip], [{ ...clip, ...change }])).toBe(true);
