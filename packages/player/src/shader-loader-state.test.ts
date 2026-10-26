@@ -47,6 +47,15 @@ describe("shader loader progress rows", () => {
     expect(visibleLabels()).toEqual(["transition"]);
   });
 
+  it("draws the Loading assets card as a spinner alone, and a shader load in full", () => {
+    const { state, root } = loader();
+    state.showAssetsLoading();
+    expect(root.dataset.mode).toBe("assets");
+
+    state.update({ loading: true, ready: false }, "player");
+    expect(root.dataset.mode).toBe("transitions");
+  });
+
   it("hides the Loading assets card but not a shader load that took the panel over", () => {
     const { state, root } = loader();
     state.showAssetsLoading();

@@ -61,12 +61,14 @@ export const PLAYER_STYLES = /* css */ `
     visibility: hidden;
     opacity: 0;
     pointer-events: none;
-    background: #030504;
-    color: #f4f7fb;
+    background: #000;
+    color: #fff;
     cursor: default;
     user-select: none;
     -webkit-user-select: none;
     transition: opacity 420ms ease-out, visibility 420ms ease-out;
+    /* Sized by the player, so a small player gets a small card. */
+    container-type: size;
   }
 
   .hfp-shader-loader.hfp-visible,
@@ -85,19 +87,18 @@ export const PLAYER_STYLES = /* css */ `
   }
 
   .hfp-shader-loader-panel {
-    display: grid;
-    grid-template-rows: 86px 40px 26px 12px 44px;
-    justify-items: center;
+    display: flex;
+    flex-direction: column;
     align-items: center;
-    gap: 8px;
+    gap: clamp(4px, 1.6cqmin, 10px);
     width: min(620px, 82%);
     text-align: center;
-    font-family: Inter, -apple-system, BlinkMacSystemFont, "Segoe UI", sans-serif;
+    font-family: var(--hfp-font, inherit);
   }
 
   .hfp-shader-loader-mark {
-    width: 86px;
-    height: 86px;
+    width: clamp(20px, 10cqmin, 56px);
+    height: clamp(20px, 10cqmin, 56px);
     display: grid;
     place-items: center;
     overflow: visible;
@@ -105,6 +106,8 @@ export const PLAYER_STYLES = /* css */ `
 
   .hfp-shader-loader-mark svg {
     display: block;
+    width: 100%;
+    height: 100%;
     overflow: visible;
     pointer-events: none;
     animation: hfp-shader-loader-spin 0.9s linear infinite;
@@ -122,12 +125,11 @@ export const PLAYER_STYLES = /* css */ `
 
   .hfp-shader-loader-title {
     width: 100%;
-    height: 40px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    font-size: 26px;
-    line-height: 40px;
+    font-size: clamp(13px, 4.2cqmin, 26px);
+    line-height: 1.5;
     font-weight: 700;
     letter-spacing: 0;
   }
@@ -136,11 +138,9 @@ export const PLAYER_STYLES = /* css */ `
     color: transparent;
     background: linear-gradient(
       90deg,
-      rgba(244, 247, 251, 0.84) 0%,
-      #ffffff 42%,
-      #80efe4 52%,
-      #ffffff 62%,
-      rgba(244, 247, 251, 0.84) 100%
+      rgba(255, 255, 255, 0.6) 0%,
+      #fff 50%,
+      rgba(255, 255, 255, 0.6) 100%
     );
     background-size: 220% 100%;
     -webkit-background-clip: text;
@@ -154,29 +154,28 @@ export const PLAYER_STYLES = /* css */ `
 
   .hfp-shader-loader-detail {
     width: 100%;
-    height: 26px;
     overflow: hidden;
     white-space: nowrap;
     text-overflow: ellipsis;
-    color: rgba(244, 247, 251, 0.62);
-    font-size: 15px;
-    line-height: 26px;
+    color: rgba(255, 255, 255, 0.6);
+    font-size: clamp(11px, 2.4cqmin, 15px);
+    line-height: 1.6;
     font-weight: 500;
   }
 
   .hfp-shader-loader-track {
-    width: min(360px, 100%);
-    height: 8px;
+    width: min(360px, 70%);
+    height: clamp(3px, 1cqmin, 6px);
     overflow: hidden;
     border-radius: 999px;
-    background: rgba(255, 255, 255, 0.1);
+    background: rgba(255, 255, 255, 0.15);
   }
 
   .hfp-shader-loader-fill {
     width: 100%;
     height: 100%;
     border-radius: inherit;
-    background: linear-gradient(90deg, #06e3fa, #4fdb5e);
+    background: #fff;
     transform: scaleX(0);
     transform-origin: left center;
     transition: transform 160ms ease;
@@ -184,17 +183,15 @@ export const PLAYER_STYLES = /* css */ `
 
   .hfp-shader-loader-progress {
     width: min(420px, 100%);
-    height: 44px;
     display: grid;
-    grid-template-rows: repeat(2, 22px);
-    color: rgba(244, 247, 251, 0.48);
-    font: 600 13px/22px "IBM Plex Mono", "SF Mono", "Fira Code", "Courier New", monospace;
+    color: rgba(255, 255, 255, 0.5);
+    font: 600 clamp(10px, 2cqmin, 13px) / 1.7 "IBM Plex Mono", "SF Mono", "Fira Code", "Courier New", monospace;
     font-variant-numeric: tabular-nums;
   }
 
   .hfp-shader-loader-row {
     display: grid;
-    grid-template-columns: minmax(0, 1fr) 74px;
+    grid-template-columns: minmax(0, 1fr) auto;
     align-items: center;
     column-gap: 20px;
     width: 100%;
@@ -210,6 +207,28 @@ export const PLAYER_STYLES = /* css */ `
 
   .hfp-shader-loader-value {
     text-align: right;
+  }
+
+  /* A small player keeps the title and the bar. */
+  @container (max-height: 280px) {
+    .hfp-shader-loader-detail,
+    .hfp-shader-loader-progress {
+      display: none;
+    }
+  }
+
+  /* Waiting on images, video and fonts is a spinner alone, as in any video player. */
+  .hfp-shader-loader[data-mode="assets"] .hfp-shader-loader-title,
+  .hfp-shader-loader[data-mode="assets"] .hfp-shader-loader-detail,
+  .hfp-shader-loader[data-mode="assets"] .hfp-shader-loader-track,
+  .hfp-shader-loader[data-mode="assets"] .hfp-shader-loader-progress {
+    display: none;
+  }
+
+  .hfp-shader-loader[data-mode="assets"] .hfp-shader-loader-mark {
+    width: clamp(20px, 8cqmin, 32px);
+    height: clamp(20px, 8cqmin, 32px);
+    opacity: 0.8;
   }
 
   @keyframes hfp-shader-loader-spin {

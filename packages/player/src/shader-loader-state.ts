@@ -93,6 +93,7 @@ export class ShaderLoaderState {
     // showAssetsLoading() may have left "Loading assets" here for a prior
     // show; this path owns the label whenever it's the one drawing the panel.
     this._el.root.setAttribute("aria-label", "Preparing scene transitions");
+    this._el.root.dataset.mode = "transitions";
     this._drawingAssets = false;
 
     const progress =
@@ -150,6 +151,7 @@ export class ShaderLoaderState {
     this._el.title.textContent = "Loading assets";
     this._el.detail.textContent = "Waiting for images, video and fonts to finish loading.";
     this._el.root.setAttribute("aria-label", "Loading assets");
+    this._el.root.dataset.mode = "assets";
     this._drawingAssets = true;
     this.show();
   }
