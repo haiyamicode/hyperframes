@@ -249,6 +249,22 @@ describe("useTimelineAssetDrop", () => {
     act(() => view.root.unmount());
   });
 
+  it("refuses a file drag the host doesn't take, with no drop hint or preview", () => {
+    const view = renderHarness(vi.fn());
+    const event = dragEvent(
+      { types: ["Files"], files: [], dropEffect: "copy", getData: () => "" },
+      400,
+      ROW0_MID_Y,
+    );
+
+    act(() => view.api.handleAssetDragOver(event));
+    expect(event.preventDefault).toHaveBeenCalled();
+    expect(event.dataTransfer.dropEffect).toBe("none");
+    expect(view.api.isDragOver).toBe(false);
+    expect(view.api.dropPreview).toBeNull();
+    act(() => view.root.unmount());
+  });
+
   it("moves the preview with the pointer and drops it when the drag leaves", () => {
     const view = renderHarness(vi.fn());
     act(() => view.api.handleAssetDragOver(dragEvent(assetTransfer("{}"), 400, ROW0_MID_Y)));

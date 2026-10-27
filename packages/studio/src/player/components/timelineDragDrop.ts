@@ -29,6 +29,23 @@ interface UseTimelineAssetDropOptions extends TimelineDropCallbacks {
   readOnlyPress?: (() => void) | null;
 }
 
+const TIMELINE_DROP_KINDS = [
+  ["Files", "onFileDrop"],
+  [TIMELINE_ASSET_MIME, "onAssetDrop"],
+  [TIMELINE_BLOCK_MIME, "onBlockDrop"],
+  [TIMELINE_COMPOSITION_MIME, "onCompositionDrop"],
+] as const;
+
+/** A drag the timeline ignores, one no host callback takes, or one the host takes. */
+function timelineDragKind(
+  types: readonly string[],
+  callbacks: TimelineDropCallbacks,
+): "ignored" | "refused" | "taken" {
+  const carried = TIMELINE_DROP_KINDS.filter(([type]) => types.includes(type));
+  if (carried.length === 0) return "ignored";
+  return carried.some(([, callback]) => callbacks[callback]) ? "taken" : "refused";
+}
+
 /**
  * Parse a JSON drag payload and, if it yields a value, forward it to the drop
  * callback. Malformed payloads are ignored. Shared by the asset + block paths so
@@ -229,11 +246,19 @@ export function useTimelineAssetDrop({
   const handleAssetDragOver = useCallback(
     (e: React.DragEvent) => {
       const types = Array.from(e.dataTransfer.types);
-      const hasFiles = types.includes("Files");
-      const hasAsset = types.includes(TIMELINE_ASSET_MIME);
-      const hasBlock = types.includes(TIMELINE_BLOCK_MIME);
-      const hasComposition = types.includes(TIMELINE_COMPOSITION_MIME);
-      if (!hasFiles && !hasAsset && !hasBlock && !hasComposition) return;
+      const kind = timelineDragKind(types, {
+        onFileDrop,
+        onAssetDrop,
+        onBlockDrop,
+        onCompositionDrop,
+      });
+      if (kind === "ignored") return;
+      // A drag the host doesn't take is refused: no drop hint, and the browser doesn't open the file.
+      if (kind === "refused") {
+        e.preventDefault();
+        e.dataTransfer.dropEffect = "none";
+        return;
+      }
       if (readOnlyPress) {
         e.dataTransfer.dropEffect = "none";
         if (!refusedDragRef.current) readOnlyPress();
@@ -252,7 +277,16 @@ export function useTimelineAssetDrop({
       );
       syncAutoScroll(e.clientX, e.clientY);
     },
-    [readOnlyPress, resolveDropPlacement, sessionEpoch, syncAutoScroll],
+    [
+      onAssetDrop,
+      onBlockDrop,
+      onCompositionDrop,
+      onFileDrop,
+      readOnlyPress,
+      resolveDropPlacement,
+      sessionEpoch,
+      syncAutoScroll,
+    ],
   );
 
   const clearDropPreview = useCallback(() => {

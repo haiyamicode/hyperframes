@@ -50,4 +50,6 @@ export interface TimelineProps
   trackPadding?: TimelineTrackPadding;
   readOnly?: boolean;
   onReadOnlyPress?: () => void;
+  /** The empty timeline's prompt; null shows the empty lanes alone. */
+  emptyMessage?: ReactNode;
 }

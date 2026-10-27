@@ -1,4 +1,4 @@
-import type { MutableRefObject, PointerEvent } from "react";
+import type { MutableRefObject, PointerEvent, ReactNode } from "react";
 import type {
   TimelineContainerProps,
   TimelineMeta,
@@ -20,6 +20,7 @@ type ViewportHandlers = Pick<
 export interface TimelineShellMetaInputs {
   isDragOver: boolean;
   hasFileDrop: boolean;
+  emptyMessage?: ReactNode;
   drop: Pick<ViewportHandlers, "onDragOver" | "onDragLeave" | "onDrop">;
   pointer: Pick<ViewportHandlers, "onPointerMove" | "onPointerUp" | "onPointerCancel"> & {
     onPointerDown: TimelineViewportProps["onPointerDown"];
@@ -49,7 +50,12 @@ export interface TimelineShellMetaInputs {
 export function buildTimelineShellMeta(input: TimelineShellMetaInputs): TimelineMeta {
   const { drop, pointer, razor, theme, activeTool } = input;
   return buildTimelineMeta({
-    emptyState: { isDragOver: input.isDragOver, onFileDrop: input.hasFileDrop, ...drop },
+    emptyState: {
+      isDragOver: input.isDragOver,
+      onFileDrop: input.hasFileDrop,
+      message: input.emptyMessage,
+      ...drop,
+    },
     container: {
       ref: input.setContainerRef,
       "aria-label": "Timeline track view",

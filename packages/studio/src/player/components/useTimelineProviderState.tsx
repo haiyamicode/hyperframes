@@ -77,6 +77,7 @@ export function useTimelineProviderState({
   showAudioEffects = true,
   showKeyframes = true,
   trackPadding,
+  emptyMessage,
   sessionEpoch: sessionEpochProp,
   previewIframeRef,
   onZIndexReorder,
@@ -548,6 +549,7 @@ export function useTimelineProviderState({
   const timelineMeta = buildTimelineShellMeta({
     isDragOver: assetDrop.isDragOver,
     hasFileDrop: !!onFileDrop && !readOnlyPress,
+    emptyMessage,
     drop: {
       onDragOver: assetDrop.handleAssetDragOver,
       onDragLeave: assetDrop.handleAssetDragLeave,
