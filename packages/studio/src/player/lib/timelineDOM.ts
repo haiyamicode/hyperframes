@@ -70,7 +70,7 @@ function resolveClipTag(clip: ClipManifestClip): string {
   return clip.tagName || clip.kind || "div";
 }
 
-/** The host's limits on moves and trims (`data-timeline-locked`, `-no-move`, `-no-trim-*`, `-max-duration`, `-lane-kind`). */
+/** The host's limits on moves and trims (`data-timeline-locked`, `-no-move`, `-no-trim-*`, `-max-duration`). */
 function readTimelineEditLimits(el: Element, entry: TimelineElement): void {
   if (el.hasAttribute("data-timeline-locked")) entry.timelineLocked = true;
   if (el.hasAttribute("data-timeline-no-move")) entry.noMove = true;
@@ -78,8 +78,14 @@ function readTimelineEditLimits(el: Element, entry: TimelineElement): void {
   if (el.hasAttribute("data-timeline-no-trim-end")) entry.noTrimEnd = true;
   const maxDuration = Number.parseFloat(el.getAttribute("data-timeline-max-duration") ?? "");
   if (Number.isFinite(maxDuration) && maxDuration > 0) entry.maxDuration = maxDuration;
+}
+
+/** The host's kind for the clip's lane (`data-timeline-lane-kind`) and name for its track (`-track-name`). */
+function readTimelineTrackInfo(el: Element, entry: TimelineElement): void {
   const laneKind = el.getAttribute("data-timeline-lane-kind");
   if (laneKind) entry.laneKind = laneKind;
+  const trackName = el.getAttribute("data-timeline-track-name");
+  if (trackName) entry.trackName = trackName;
 }
 
 // fallow-ignore-next-line complexity
@@ -165,6 +171,7 @@ export function createTimelineElementFromManifestClip(params: {
     if (hostEl.hasAttribute("data-timeline-no-split")) entry.noSplit = true;
     if (hostEl.hasAttribute("data-timeline-no-fade")) entry.noFade = true;
     readTimelineEditLimits(hostEl, entry);
+    readTimelineTrackInfo(hostEl, entry);
     const timelineRole = hostEl.getAttribute("data-timeline-role");
     if (timelineRole) entry.timelineRole = timelineRole;
     const link = hostEl.getAttribute("data-link");
@@ -362,6 +369,7 @@ export function parseTimelineFromDOM(
       entry.noFade = true;
     }
     readTimelineEditLimits(el, entry);
+    readTimelineTrackInfo(el, entry);
     if (el.hasAttribute("data-hidden")) {
       entry.hidden = true;
     }

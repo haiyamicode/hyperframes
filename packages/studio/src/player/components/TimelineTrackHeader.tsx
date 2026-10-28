@@ -7,6 +7,7 @@ import {
 import { classifyAudioName } from "@hyperframes/core/audio-carve";
 import { usePlayerStore, type TimelineElement } from "../store/playerStore";
 import { VisibilityButton, PlainTrackHeader } from "./TimelineTrackPlainHeader";
+import { TrackMenuButton } from "./TimelineTrackMenu";
 import type { TimelineEditCallbacks } from "./timelineCallbacks";
 import { useTimelineEditContextOptional } from "../../contexts/TimelineEditContext";
 import { useDomEditActionsContextOptional } from "../../contexts/DomEditContext";
@@ -223,7 +224,18 @@ export function TimelineTrackHeader({
     onSetElementAttributeLive,
     onSetElementAttributeQuiet,
     onRevertElementAttributeLive,
+    onRenameTrack,
+    onDeleteTrack,
   } = useTimelineEditContextOptional();
+  const trackMenu = (
+    <TrackMenuButton
+      trackNumber={trackNumber}
+      trackDisplayNumber={trackDisplayNumber}
+      trackName={trackLabel}
+      onRenameTrack={onRenameTrack}
+      onDeleteTrack={onDeleteTrack}
+    />
+  );
   const domEditActions = useDomEditActionsContextOptional();
   const singleAudioClip =
     isAudioTrack && clipCount === 1 && trackElements.length > 0 ? trackElements[0] : null;
@@ -361,6 +373,7 @@ export function TimelineTrackHeader({
                       onToggle={onToggleClipExpanded}
                     />
                   )}
+                  {trackMenu}
                 </>
               }
             />
@@ -389,6 +402,7 @@ export function TimelineTrackHeader({
               asMute={isAudioOnly}
               onToggle={onToggleTrackHidden}
             />
+            {trackMenu}
           </LayerDisclosureRow>
         </>
       )}

@@ -46,6 +46,7 @@ import {
   type TimelineTrackInsertLayout,
 } from "./timelineTrackInsertLayout";
 import type { TimelineRowGeometry } from "./timelineLayout";
+import { laneKindTracks } from "./timelineCollision";
 import {
   mountTimelineClipDragGestureLifecycle,
   type TimelineGestureKind,
@@ -502,6 +503,7 @@ export function useTimelineClipDrag({
         layout: trackInsertLayoutRef?.current,
         audioTracks,
         isAudio: audioTracks.has(drag.element.track),
+        lanes: laneKindTracks(drag.element, trackOrderRef.current, elementsRef.current),
       });
       if (row === null) return;
       publishDraggedClip({ ...drag, insertRow: row });

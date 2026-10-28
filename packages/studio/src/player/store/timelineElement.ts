@@ -83,6 +83,8 @@ export interface TimelineElement {
   maxDuration?: number;
   /** `data-timeline-lane-kind` — the clip moves only to lanes whose other clips share its kind. */
   laneKind?: string;
+  /** `data-timeline-track-name` — the host's name for the clip's track, shown in the track header. */
+  trackName?: string;
   /** Set by data-hidden on the host element — hides the clip in preview and render. */
   hidden?: boolean;
   /** Value of data-timeline-role attribute — used to identify music vs. voiceover. */

@@ -322,6 +322,7 @@ export function TimelineLanes({
                 // key, so it stays out of every label and in every callback.
                 trackDisplayNumber={displayNumber}
                 trackLabel={
+                  els[0]?.trackName ??
                   els[0]?.label ??
                   els[0]?.domId ??
                   els[0]?.id ??

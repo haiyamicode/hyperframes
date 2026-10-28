@@ -1,5 +1,5 @@
 import type { TimelineTrackGroupInfo } from "./useTimelineTrackDerivations";
-import { timelineAudioRow, isInsertAllowedForZone } from "./timelineCollision";
+import { timelineAudioRow, isInsertAllowedForZone, laneKindInsertRows } from "./timelineCollision";
 
 export function timelineTrackOrderChanged(
   previous: readonly number[],
@@ -30,14 +30,19 @@ export function nextKeyboardInsertRow(input: {
   layout: TimelineTrackInsertLayout | undefined;
   audioTracks: ReadonlySet<number>;
   isAudio: boolean;
+  /** The lanes the clip may take (see laneKindTracks): it opens a track only next to one. */
+  lanes?: ReadonlySet<number>;
 }): number | null {
-  const { current, step, order, layout, audioTracks, isAudio } = input;
+  const { current, step, order, layout, audioTracks, isAudio, lanes } = input;
   let row = Math.max(0, Math.min(order.length, current + step));
-  const allowed = layout?.allowedRows;
+  const allowed = lanes
+    ? laneKindInsertRows(order, lanes, layout?.allowedRows)
+    : layout?.allowedRows;
   while (allowed?.has(row) === false) {
     row += step;
     if (row < 0 || row > order.length) return null;
   }
+  if (lanes) return row;
   const audioRow = timelineAudioRow(order, audioTracks, layout?.groupTracks);
   return isInsertAllowedForZone(row, audioRow, isAudio, allowed) ? row : null;
 }

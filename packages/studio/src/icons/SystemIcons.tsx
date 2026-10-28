@@ -27,6 +27,7 @@ import {
   Image as PhImage,
   BezierCurve,
   FolderSimple,
+  DotsThree,
 } from "@phosphor-icons/react";
 import type { Icon as PhosphorIcon, IconProps as PhosphorIconProps } from "@phosphor-icons/react";
 
@@ -81,3 +82,4 @@ export const Trash = makeIcon(PhTrash);
 export const ImageIcon = makeIcon(PhImage);
 export const Vector = makeIcon(BezierCurve);
 export const Folder = makeIcon(FolderSimple);
+export const MoreHorizontal = makeIcon(DotsThree);

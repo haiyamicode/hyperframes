@@ -20,7 +20,7 @@ import {
   type TimelineSnapTarget,
   type TimelineSnapType,
 } from "./timelineSnapping";
-import { resolveInsertRow, resolveZoneDropPlacement } from "./timelineCollision";
+import { laneKindTracks, resolveInsertRow, resolveZoneDropPlacement } from "./timelineCollision";
 import {
   applyTimelineGroupResizePreview,
   type TimelineGroupResizeSession,
@@ -146,22 +146,6 @@ function dragRowAim(
   return { rowFloat, insertRow: physicalInsertRow(rowFloat, y, ctx, geometry) };
 }
 
-/** The lanes a clip with a lane kind may take: its own, and those whose other clips share its kind. */
-function laneKindTracks(
-  element: TimelineElement,
-  ctx: DragPreviewContext,
-): ReadonlySet<number> | undefined {
-  if (element.laneKind === undefined) return undefined;
-  const key = element.key ?? element.id;
-  const lanes = new Set(ctx.trackOrder);
-  for (const other of ctx.elements) {
-    if ((other.key ?? other.id) !== key && other.laneKind !== element.laneKind)
-      lanes.delete(other.track);
-  }
-  lanes.add(element.track);
-  return lanes;
-}
-
 /** The drop decision for the pointer's row (see resolveZoneDropPlacement). */
 function resolveDropPlacement(
   drag: DraggedClipState,
@@ -189,7 +173,7 @@ function resolveDropPlacement(
     isAudio: isAudioTimelineElement(drag.element),
     minStart: group.floor,
     origin: { track: drag.element.track, start: drag.element.start },
-    lanes: laneKindTracks(drag.element, ctx),
+    lanes: laneKindTracks(drag.element, trackOrder, elements),
     trackInsert: ctx.trackInsert,
   });
 }

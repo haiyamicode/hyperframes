@@ -16,6 +16,7 @@ import type {
   TimelineMoveOperation,
   TimelineAtomicMoveUpdates,
   TimelineAtomicMoveEdit,
+  TimelineTrackInsert,
 } from "../../hooks/timelineMoveAdapter";
 import {
   beginTimelineOptimisticGesture,
@@ -54,6 +55,7 @@ export interface DragCommitDeps {
     edits: TimelineMoveEdit[],
     coalesceKey?: string,
     operation?: TimelineMoveOperation,
+    insert?: TimelineTrackInsert,
   ) => Promise<void> | void;
   /**
    * The current multi-selection (store.selectedElementIds). When the dragged
@@ -120,6 +122,7 @@ export function persistMoveEdits(
   deps: DragCommitDeps,
   coalesceKey?: string,
   operation: TimelineMoveOperation = "timing",
+  insert?: TimelineTrackInsert,
 ): Promise<boolean> {
   if (edits.length === 0) return Promise.resolve(true);
   edits = edits.map((e) => {
@@ -207,7 +210,7 @@ export function persistMoveEdits(
     : null;
   const start = () =>
     onMoveElements
-      ? onMoveElements(persistEdits, coalesceKey, operation)
+      ? onMoveElements(persistEdits, coalesceKey, operation, insert)
       : Promise.all(
           persistEdits.map((e) => Promise.resolve(onMoveElement?.(e.element, e.updates))),
         );
@@ -432,6 +435,22 @@ function buildTrackInsertEdits(
   return { candidate, edits };
 }
 
+/** The authored tracks of the rows on either side of insert boundary `insertRow`, read before the
+ *  renumber: a host with its own track list opens its track between them. */
+function trackInsertPlacement(
+  key: string,
+  insertRow: number,
+  deps: Pick<DragCommitDeps, "elements" | "trackOrder">,
+): TimelineTrackInsert {
+  const authoredAt = (row: number): number | null => {
+    const lane = deps.trackOrder[row];
+    if (lane === undefined) return null;
+    const element = deps.elements.find((e) => e.track === lane);
+    return element ? (element.authoredTrack ?? element.track) : null;
+  };
+  return { key, above: authoredAt(insertRow - 1), below: authoredAt(insertRow) };
+}
+
 function commitTrackInsert(
   drag: DraggedClipState,
   deps: DragCommitDeps,
@@ -451,18 +470,19 @@ function commitTrackInsert(
   if (!built) return;
   const { candidate, edits } = built;
   if (edits.length === 0) return;
+  const insert = trackInsertPlacement(dragKey, drag.insertRow!, deps);
 
   const coalesceKey = `clip-lane-move:${laneChangeGestureSeq++}`;
   if (!deps.readZIndex || !deps.onStackingPatches) {
     void refreshAfterDurableLaneMove(
-      persistMoveEdits(edits, deps, coalesceKey, "track-insert"),
+      persistMoveEdits(edits, deps, coalesceKey, "track-insert", insert),
       deps,
     );
     return;
   }
   void refreshAfterDurableLaneMove(
     runLaneZGesture({
-      commitLane: () => persistMoveEdits(edits, deps, coalesceKey, "track-insert"),
+      commitLane: () => persistMoveEdits(edits, deps, coalesceKey, "track-insert", insert),
       commitZ: () =>
         // Sync from the fractional drop intent, not the normalized persisted lanes.
         syncStackingForEdit(
@@ -518,8 +538,9 @@ export function commitZMirrorLaneMove(
   }
   const built = buildTrackInsertEdits(element, element.start, move.insertRow, null, deps);
   if (!built || built.edits.length === 0) return Promise.resolve(false);
+  const insert = trackInsertPlacement(keyOf(element), move.insertRow, deps);
   return refreshAfterDurableLaneMove(
-    persistMoveEdits(built.edits, deps, coalesceKey, "track-insert"),
+    persistMoveEdits(built.edits, deps, coalesceKey, "track-insert", insert),
     deps,
   );
 }

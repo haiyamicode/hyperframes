@@ -51,6 +51,37 @@ export function isInsertAllowedForZone(
   return isAudio ? insertRow >= audioRow : insertRow <= audioRow;
 }
 
+/** The lanes a clip with a lane kind may take: its own, and those whose other clips share its kind. */
+export function laneKindTracks(
+  element: TimelineElement,
+  order: readonly number[],
+  elements: readonly TimelineElement[],
+): ReadonlySet<number> | undefined {
+  if (element.laneKind === undefined) return undefined;
+  const key = element.key ?? element.id;
+  const lanes = new Set(order);
+  for (const other of elements) {
+    if ((other.key ?? other.id) !== key && other.laneKind !== element.laneKind)
+      lanes.delete(other.track);
+  }
+  lanes.add(element.track);
+  return lanes;
+}
+
+/** The rows a clip held to `lanes` may open a track at: right above or below one of them. */
+export function laneKindInsertRows(
+  order: readonly number[],
+  lanes: ReadonlySet<number>,
+  allowed?: ReadonlySet<number>,
+): ReadonlySet<number> {
+  const rows = new Set<number>();
+  order.forEach((track, row) => {
+    if (!lanes.has(track)) return;
+    for (const at of [row, row + 1]) if (!allowed || allowed.has(at)) rows.add(at);
+  });
+  return rows;
+}
+
 /**
  * Insert-row boundary for an out-of-range aim — a `desired` track that isn't a
  * real lane: the sentinel minTrack-1 an upward create-drag emits (#2214-adjacent
@@ -134,6 +165,36 @@ function groupHeaderAim(
   return { kind: "origin", ...input.origin };
 }
 
+/** Whether the seam at `row` may open a track for the clip. One held to lanes of its kind (`kindRows`
+ *  from `laneKindInsertRows`) opens one only next to them, wherever its zone sits. */
+function acceptsDeliberateInsert(
+  input: Parameters<typeof resolveZoneDropPlacement>[0],
+  row: number,
+  audioRow: number,
+  kindRows: ReadonlySet<number> | undefined,
+): boolean {
+  if (input.trackInsert === false) return false;
+  if (kindRows) return kindRows.has(row);
+  return isInsertAllowedForZone(row, audioRow, input.isAudio, input.allowedInsertRows);
+}
+
+/** `row` if a track may open there, else the nearest row above it that may (0 at the latest). */
+function allowedRowAtOrAbove(row: number, allowed: ReadonlySet<number> | undefined): number {
+  let at = row;
+  while (at > 0 && allowed && !allowed.has(at)) at--;
+  return at;
+}
+
+/** Whether an aim at no lane the clip may take leaves it on its own lane: new tracks are off, or the
+ *  aim is a lane of another kind. */
+function keepsOwnLane(
+  input: Parameters<typeof resolveZoneDropPlacement>[0],
+  desired: number,
+  kindRows: ReadonlySet<number> | undefined,
+): boolean {
+  return input.trackInsert === false || (kindRows !== undefined && input.order.includes(desired));
+}
+
 // A deliberate seam opens a track; other aims land at the nearest free time on a row of the clip's kind.
 export function resolveZoneDropPlacement(input: {
   order: number[];
@@ -159,11 +220,11 @@ export function resolveZoneDropPlacement(input: {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;
   const audioRow = timelineAudioRow(order, audioTracks, input.groupTracks);
+  const kindRows = input.lanes && laneKindInsertRows(order, input.lanes, input.allowedInsertRows);
 
   if (
     deliberateInsertRow !== null &&
-    input.trackInsert !== false &&
-    isInsertAllowedForZone(deliberateInsertRow, audioRow, isAudio, input.allowedInsertRows)
+    acceptsDeliberateInsert(input, deliberateInsertRow, audioRow, kindRows)
   ) {
     return { track: desiredTrack, insertRow: deliberateInsertRow, start };
   }
@@ -180,7 +241,7 @@ export function resolveZoneDropPlacement(input: {
       audioTracks.has(t) === isAudio &&
       (!input.lanes || input.lanes.has(t)),
   );
-  if (!zoneTracks.includes(desired) && input.trackInsert === false && input.origin) {
+  if (!zoneTracks.includes(desired) && input.origin && keepsOwnLane(input, desired, kindRows)) {
     const { track, start: originStart } = input.origin;
     const freeStart = resolveNearestFreeStart(
       elements,
@@ -196,13 +257,12 @@ export function resolveZoneDropPlacement(input: {
   // Only when the aim is outside the rows, or the clip's zone has no row yet.
   if (!zoneTracks.includes(desired)) {
     const desiredRow = order.indexOf(desired);
-    let insertRow =
+    const insertRow =
       desiredRow < 0 || zoneTracks.length === 0
         ? outOfRangeZoneInsertRow(order, zoneTracks, audioRow, desired)
         : desiredRow + 1;
-    while (insertRow > 0 && input.allowedInsertRows && !input.allowedInsertRows.has(insertRow))
-      insertRow--;
-    return { track: desired, insertRow, start };
+    const allowedRow = allowedRowAtOrAbove(insertRow, kindRows ?? input.allowedInsertRows);
+    return { track: desired, insertRow: allowedRow, start };
   }
   const origin = input.origin?.track === desired ? input.origin.start : null;
   const freeStart = resolveNearestFreeStart(

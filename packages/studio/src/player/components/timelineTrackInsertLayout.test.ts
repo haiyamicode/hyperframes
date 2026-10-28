@@ -1,5 +1,5 @@
 import { expect, it, vi } from "vitest";
-import { buildTimelineTrackInsertLayout } from "./timelineTrackInsertLayout";
+import { buildTimelineTrackInsertLayout, nextKeyboardInsertRow } from "./timelineTrackInsertLayout";
 import { computeDragPreview } from "./timelineClipDragPreview";
 import { commitDraggedClipMove } from "./timelineClipDragCommit";
 import { timelineAudioRow, resolveZoneDropPlacement } from "./timelineCollision";
@@ -247,3 +247,20 @@ it.each([
     ).toEqual({ track: target, insertRow: null, start: 2 });
   },
 );
+
+it("steps a keyboard pickup only through the rows next to its kind's lanes", () => {
+  const step = (current: number, step: -1 | 1) =>
+    nextKeyboardInsertRow({
+      current,
+      step,
+      order: [0, 1, 2, 3],
+      layout: buildTimelineTrackInsertLayout([0, 1, 2, 3], []),
+      audioTracks: new Set([0, 3]),
+      isAudio: false,
+      lanes: new Set([1, 2]),
+    });
+  expect(step(1, 1)).toBe(2);
+  expect(step(2, 1)).toBe(3);
+  expect(step(3, 1)).toBeNull();
+  expect(step(1, -1)).toBeNull();
+});

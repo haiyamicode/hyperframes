@@ -23,6 +23,18 @@ interface AtomicMoveDeps {
 
 export type TimelineMoveOperation = "timing" | "lane-reorder" | "track-insert";
 
+/**
+ * Where a "track-insert" opens its new track: the dragged clip's key, and the
+ * authored tracks of the rows on either side of the new one (null past the top
+ * or bottom row). A host that keeps its own track list places the track from
+ * these rather than from the renumbered lanes in the edits.
+ */
+export interface TimelineTrackInsert {
+  key: string;
+  above: number | null;
+  below: number | null;
+}
+
 export type TimelineMoveEditsHandler = (
   edits: TimelineAtomicMoveEdit[],
   coalesceKey?: string,

@@ -4,6 +4,7 @@ import type { TimelineElement } from "../store/playerStore";
 import type {
   TimelineMoveOperation,
   TimelineAtomicMoveUpdates,
+  TimelineTrackInsert,
 } from "../../hooks/timelineMoveAdapter";
 import type { BlockedTimelineEditIntent } from "./timelineEditing";
 import type { PropertyGroupName } from "@hyperframes/core/gsap-parser";
@@ -61,6 +62,7 @@ export interface TimelineEditCallbacks {
     edits: Array<{ element: TimelineElement; updates: TimelineAtomicMoveUpdates }>,
     coalesceKey?: string,
     operation?: TimelineMoveOperation,
+    insert?: TimelineTrackInsert,
   ) => Promise<void> | void;
   onResizeElement?: (
     element: TimelineElement,
@@ -89,6 +91,10 @@ export interface TimelineEditCallbacks {
     hidden: boolean,
     displayNumber?: number | null,
   ) => Promise<void> | void;
+  /** A track header's menu: rename the track, or delete it with its clips. `track`
+   *  is the row's key, as `onToggleTrackHidden` gets it. Absent: no menu. */
+  onRenameTrack?: (track: number, name: string) => Promise<void> | void;
+  onDeleteTrack?: (track: number) => Promise<void> | void;
   /** B7's bus strip: live-write the group's own attribute while dragging. */
   onSetAudioGroupAttributeLive?: (groupId: string, attr: string, value: string | null) => void;
   onRevertAudioGroupAttributeLive?: (groupId: string, attr: string) => void;

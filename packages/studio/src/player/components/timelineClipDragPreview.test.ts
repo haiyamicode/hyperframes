@@ -973,6 +973,40 @@ describe("computeDragPreview — lane kinds, without new tracks", () => {
   });
 });
 
+describe("computeDragPreview — lane kinds, opening tracks", () => {
+  const ofKind = (element: TimelineElement, laneKind: string) => ({ ...element, laneKind });
+  // Speech on top, pictures under it, music at the bottom: audio sits on both sides of a visual lane.
+  const speech = ofKind(clip("speech", 0, 0, 3, 0, "audio"), "voiceover");
+  const image = ofKind(clip("image", 1, 0, 4, 2, "img"), "visual");
+  const music = ofKind(clip("music", 2, 0, 8, 0, "audio"), "music");
+  const elements = [speech, image, music];
+
+  function aim(element: TimelineElement, rowFloat: number): DraggedClipState {
+    const { drag, clientX } = horizontalDrag(element, element.track + 0.5, 0);
+    return computeDragPreview(drag, clientX, yForRow(rowFloat), {
+      ...ctx(undefined, elements),
+      trackOrder: [0, 1, 2],
+      audioTracks: new Set([0, 2]),
+    });
+  }
+
+  it("opens a track right above or below a lane of its kind", () => {
+    expect(aim(speech, -0.6)).toMatchObject({ insertRow: 0 });
+    expect(aim(speech, 1.02)).toMatchObject({ insertRow: 1 });
+    expect(aim(image, 1.02)).toMatchObject({ insertRow: 1 });
+    expect(aim(image, 2.02)).toMatchObject({ insertRow: 2 });
+    expect(aim(music, 3.6)).toMatchObject({ insertRow: 3 });
+  });
+
+  it("stays on its own lane at another kind's seam or lane, or past the rows away from its kind", () => {
+    for (const rowFloat of [1.5, 2.02, 2.5, 3.6]) {
+      expect(aim(speech, rowFloat)).toMatchObject({ previewTrack: 0, insertRow: null });
+    }
+    expect(aim(image, -0.6)).toMatchObject({ previewTrack: 1, insertRow: null });
+    expect(aim(music, 0.5)).toMatchObject({ previewTrack: 2, insertRow: null });
+  });
+});
+
 describe("computeResizePreview — the longest a clip may become", () => {
   const pause = { ...clip("pause", 0, 2, 1, 0, "audio"), maxDuration: 60 };
   const trim = (edge: "start" | "end", clientX: number) =>

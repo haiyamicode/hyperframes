@@ -31,6 +31,8 @@ const EDIT_CALLBACK_KEY_SET: Record<keyof TimelineEditCallbacks, true> = {
   onResizeElement: true,
   onResizeElements: true,
   onToggleTrackHidden: true,
+  onRenameTrack: true,
+  onDeleteTrack: true,
   onSetAudioGroupAttributeLive: true,
   onSetAudioGroupAttributeQuiet: true,
   onRevertAudioGroupAttributeLive: true,

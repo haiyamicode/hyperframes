@@ -147,11 +147,12 @@ describe("parseTimelineFromDOM — media in-point", () => {
 });
 
 describe("parseTimelineFromDOM — edit limits", () => {
-  it("reads whether the clip moves, which edges trim, its longest length and its lane kind", () => {
+  it("reads whether the clip moves, which edges trim, its longest length, its lane kind and track name", () => {
     const doc = makeDoc(`
       <div data-composition-id="root">
         <audio id="vo" class="clip" data-start="0" data-duration="2" data-timeline-no-trim-start
-          data-timeline-no-trim-end data-timeline-lane-kind="voiceover"></audio>
+          data-timeline-no-trim-end data-timeline-lane-kind="voiceover"
+          data-timeline-track-name="Narrator"></audio>
         <audio id="gap" class="clip" data-start="2" data-duration="1" data-timeline-no-move
           data-timeline-no-trim-start data-timeline-max-duration="60"
           data-timeline-lane-kind="voiceover"></audio>
@@ -162,7 +163,12 @@ describe("parseTimelineFromDOM — edit limits", () => {
     const vo = rows.find((e) => e.domId === "vo")!;
     const gap = rows.find((e) => e.domId === "gap")!;
     const pic = rows.find((e) => e.domId === "pic")!;
-    expect(vo).toMatchObject({ noTrimStart: true, noTrimEnd: true, laneKind: "voiceover" });
+    expect(vo).toMatchObject({
+      noTrimStart: true,
+      noTrimEnd: true,
+      laneKind: "voiceover",
+      trackName: "Narrator",
+    });
     expect(getTimelineEditCapabilities(vo)).toEqual({
       canMove: true,
       canTrimStart: false,
@@ -183,6 +189,7 @@ describe("parseTimelineFromDOM — edit limits", () => {
     expect(canMoveTimelineElement(vo)).toBe(true);
     expect(pic.maxDuration).toBeUndefined();
     expect(pic.laneKind).toBeUndefined();
+    expect(pic.trackName).toBeUndefined();
   });
 
   it("reads a lock on both the DOM and manifest paths", () => {
