@@ -153,6 +153,7 @@ import type {
   HeldSeek,
   RuntimeDeterministicAdapter,
   RuntimeJson,
+  RuntimePlayerSeekOptions,
   RuntimeSeekOptions,
   RuntimeTimelineChildLike,
   RuntimeTimelineLike,
@@ -674,7 +675,7 @@ export function initSandboxRuntimeModular(): void {
     _timeline: RuntimeTimelineLike | null;
     play: () => void;
     pause: () => void;
-    seek: (timeSeconds: number, options?: { keepPlaying?: boolean }) => HeldSeek;
+    seek: (timeSeconds: number, options?: RuntimePlayerSeekOptions) => HeldSeek;
     getTime: () => number;
     getDuration: () => number;
     isPlaying: () => boolean;
@@ -4195,12 +4196,12 @@ export function initSandboxRuntimeModular(): void {
     heldSeek = null;
     held?.apply();
   };
-  const applySeek = (quantized: number, options?: { keepPlaying?: boolean }) => {
+  const applySeek = (seekTime: number, options?: { keepPlaying?: boolean }) => {
     webAudio.stopAll();
     clock.detachAudioSource();
     const wasPlaying = clock.isPlaying();
     if (wasPlaying) clock.pause();
-    clock.seek(quantized);
+    clock.seek(seekTime);
     state.currentTime = clock.now();
     state.isPlaying = false;
     state.mediaForceSyncNextTick = true;
@@ -4277,17 +4278,17 @@ export function initSandboxRuntimeModular(): void {
       postState(true);
     },
     seek: (timeSeconds, options) => {
-      const quantized = quantizeTimeToFrame(
-        Math.max(0, Number(timeSeconds) || 0),
-        state.canonicalFps,
-      );
+      const safeTime = Math.max(0, Number(timeSeconds) || 0);
+      const seekTime = options?.exact
+        ? safeTime
+        : quantizeTimeToFrame(safeTime, state.canonicalFps);
       heldSeek = null;
-      const undecoded = clock.isPlaying() ? [] : undecodedImagesShownAt(quantized);
+      const undecoded = clock.isPlaying() ? [] : undecodedImagesShownAt(seekTime);
       if (undecoded.length === 0) {
-        applySeek(quantized, options);
+        applySeek(seekTime, options);
         return;
       }
-      const held = { time: quantized, apply: () => applySeek(quantized, options) };
+      const held = { time: seekTime, apply: () => applySeek(seekTime, options) };
       heldSeek = held;
       for (const img of undecoded) {
         loadPreviewImagesIn(img);

@@ -1,4 +1,9 @@
-import type { RuntimePlayer, RuntimeSeekOptions, RuntimeTimelineLike } from "./types";
+import type {
+  RuntimePlayer,
+  RuntimePlayerSeekOptions,
+  RuntimeSeekOptions,
+  RuntimeTimelineLike,
+} from "./types";
 import { quantizeSeekTime } from "../inline-scripts/parityContract";
 import { swallow } from "./diagnostics";
 
@@ -211,7 +216,7 @@ export function createRuntimePlayer(deps: PlayerDeps): RuntimePlayer {
       deps.onRenderFrameSeek(time);
       deps.onStatePost(true);
     },
-    seek: (timeSeconds: number, options?: { keepPlaying?: boolean }) => {
+    seek: (timeSeconds: number, options?: RuntimePlayerSeekOptions) => {
       const timeline = deps.getTimeline();
       if (!timeline) return;
       const safeTime = Math.max(0, Number(timeSeconds) || 0);
@@ -221,6 +226,7 @@ export function createRuntimePlayer(deps: PlayerDeps): RuntimePlayer {
         timeline,
         safeTime,
         deps.getCanonicalFps(),
+        options,
       );
       deps.onDeterministicSeek(quantized);
       if (options?.keepPlaying && wasPlaying) {

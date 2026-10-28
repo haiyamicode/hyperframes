@@ -1,8 +1,8 @@
 #!/usr/bin/env node
-// Publishes this fork's player and studio as @haiyamicode/hyperframes-player and
-// @haiyamicode/hyperframes-studio. Every other @hyperframes package stays upstream: workspace
-// dependencies are pinned to their upstream version, and the studio's @hyperframes/player is an
-// npm alias of the forked player, so its imports resolve unchanged.
+// Publishes this fork's core, player and studio as @haiyamicode/hyperframes-core,
+// @haiyamicode/hyperframes-player and @haiyamicode/hyperframes-studio. Every other @hyperframes
+// package stays upstream: workspace dependencies are pinned to their upstream version, and a
+// forked dependency is an npm alias of its fork, so imports resolve unchanged.
 //
 //   node scripts/publish-lazybird.mjs <version> [--dry-run]
 //
@@ -23,8 +23,9 @@ import { join } from "node:path";
 
 const REGISTRY = "https://npm.haiyami.com/";
 const REPOSITORY = "git+https://github.com/haiyamicode/hyperframes.git";
-/** Forked package → its published name, in publish order (the studio depends on the player). */
+/** Forked package → its published name, in publish order (each depends on the ones before). */
 const FORKED = new Map([
+  ["@hyperframes/core", "@haiyamicode/hyperframes-core"],
   ["@hyperframes/player", "@haiyamicode/hyperframes-player"],
   ["@hyperframes/studio", "@haiyamicode/hyperframes-studio"],
 ]);
@@ -87,7 +88,11 @@ for (const name of FORKED.keys()) {
   const { dir, manifest } = workspace.get(name);
   const stage = mkdtempSync(join(tmpdir(), "hyperframes-publish-"));
   try {
-    for (const entry of [...manifest.files, "README.md"]) {
+    // A glob entry ("dist/**/*.js") copies its directory; npm packs only what `files` matches.
+    const copied = manifest.files
+      .filter((entry) => !entry.startsWith("!"))
+      .map((entry) => entry.split(/\/[^/]*[*?[{]/)[0]);
+    for (const entry of new Set([...copied, "README.md"])) {
       if (existsSync(join(dir, entry)))
         cpSync(join(dir, entry), join(stage, entry), { recursive: true });
     }

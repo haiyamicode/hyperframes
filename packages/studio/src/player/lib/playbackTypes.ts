@@ -9,7 +9,7 @@ import type { RuntimeTimelineClipIdentity } from "@hyperframes/core";
 export interface PlaybackAdapter {
   play: () => void;
   pause: () => void;
-  seek: (time: number, options?: { keepPlaying?: boolean }) => void;
+  seek: (time: number, options?: { keepPlaying?: boolean; exact?: boolean }) => void;
   getTime: () => number;
   getDuration: () => number;
   isPlaying: () => boolean;

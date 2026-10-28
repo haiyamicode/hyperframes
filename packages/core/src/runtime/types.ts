@@ -267,11 +267,15 @@ export type RuntimeOutboundMessage =
 
 export type HeldSeek = Promise<void> | void;
 
+export type RuntimePlayerSeekOptions = Pick<RuntimeSeekOptions, "exact"> & {
+  keepPlaying?: boolean;
+};
+
 export type RuntimePlayer = {
   _timeline: RuntimeTimelineLike | null;
   play: () => void;
   pause: () => void;
-  seek: (timeSeconds: number, options?: { keepPlaying?: boolean }) => HeldSeek;
+  seek: (timeSeconds: number, options?: RuntimePlayerSeekOptions) => HeldSeek;
   renderSeek: (timeSeconds: number, options?: RuntimeSeekOptions) => void;
   getTime: () => number;
   getDuration: () => number;
@@ -288,6 +292,10 @@ export type RuntimeSeekOptions = {
    * engine's sub-frame tick count so a fractional sample time survives quantization.
    */
   subFrameDivisions?: number;
+  /**
+   * Land on the time itself instead of a frame of the grid, so a clip that starts between
+   * frames can be played from its first moment.
+   */
   exact?: boolean;
 };
 
