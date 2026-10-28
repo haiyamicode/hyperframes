@@ -284,6 +284,12 @@ export class WebAudioTransport {
     return this._rateAnchorComp + (this._ctx.currentTime - this._rateAnchorCtx) * this._rate;
   }
 
+  /** How long after the graph plays a moment it is heard: the context's buffering and the device's. */
+  outputLatency(): number {
+    if (!this._ctx) return 0;
+    return (this._ctx.baseLatency || 0) + (this._ctx.outputLatency || 0);
+  }
+
   /** Drops decoded audio no listed element still points at. A playing source holds its own buffer. */
   releaseDecodedExcept(els: readonly HTMLMediaElement[]): void {
     const live = new Set(els.map(decodeKey));

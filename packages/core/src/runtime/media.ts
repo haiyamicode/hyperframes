@@ -450,6 +450,10 @@ export function syncRuntimeMedia(params: {
   /** Native media routed through WebAudio keeps its upstream element volume at
    * unity; do not mistake that transport write for an authored volume edit. */
   isWebAudioRouted?: (el: HTMLMediaElement) => boolean;
+  /** How far ahead of the playhead a playing audio element reads when heard in step with it. Web
+   *  Audio sounds what it plays its output latency late and native media about on time, so this is
+   *  the element's latency less that of what the playhead follows. */
+  heardLead?: (el: HTMLMediaElement) => number;
   forceSync?: boolean;
   /** How far the next tick will move the playhead: an audio clip due within it starts now. */
   cueAheadSeconds?: number;
@@ -647,6 +651,15 @@ export function syncRuntimeMedia(params: {
       const currentElTime = el.currentTime || 0;
       const drift = Math.abs(currentElTime - relTime);
       const offset = relTime - currentElTime;
+      // Playing audio heard in step with the playhead reads `lead` ahead of it. Where a start
+      // leaves it, between that and the playhead, depends on how fast each output starts, so all
+      // of it is in step: a seek inside it is a cut for nothing. A correction lands it where it is
+      // heard on the playhead.
+      const lead =
+        playing && !el.paused && el.tagName === "AUDIO" ? (params.heardLead?.(el) ?? 0) : 0;
+      const outOfStep = (tolerance: number) =>
+        currentElTime - relTime > Math.max(0, lead) + tolerance ||
+        relTime - currentElTime > Math.max(0, -lead) + tolerance;
       const prevOffset = lastOffset.get(el);
       lastOffset.set(el, offset);
       const firstTickOfClip = prevOffset === undefined;
@@ -658,7 +671,7 @@ export function syncRuntimeMedia(params: {
       const staleAudioOnFirstTick =
         el.tagName === "AUDIO" &&
         firstTickOfClip &&
-        currentElTime - relTime > MEDIA_SYNC_TOLERANCE_SECONDS;
+        currentElTime - relTime > Math.max(0, lead) + MEDIA_SYNC_TOLERANCE_SECONDS;
       const hardSync =
         (isHeldVideoTail && drift > 0.001) ||
         (el.ended && canSeekEndedMediaBackward && drift > 0.001) ||
@@ -683,7 +696,7 @@ export function syncRuntimeMedia(params: {
         !hardSync &&
         !firstTickOfClip &&
         offsetStabilized &&
-        drift > MEDIA_SYNC_TOLERANCE_SECONDS
+        outOfStep(MEDIA_SYNC_TOLERANCE_SECONDS)
       ) {
         const samples = (strictDriftSamples.get(el) ?? 0) + 1;
         strictDriftSamples.set(el, samples);
@@ -691,10 +704,10 @@ export function syncRuntimeMedia(params: {
           strictSync = true;
           strictDriftSamples.set(el, 0);
         }
-      } else if (drift <= MEDIA_SYNC_TOLERANCE_SECONDS) {
+      } else if (!outOfStep(MEDIA_SYNC_TOLERANCE_SECONDS)) {
         strictDriftSamples.set(el, 0);
       }
-      const forceSync = !isPlayingVideo && params.forceSync && drift > 0.02;
+      const forceSync = !isPlayingVideo && params.forceSync && outOfStep(0.02);
       try {
         // A hard sync lands the video on the playhead, so its pre-seek offset says nothing.
         if (!isPlayingVideo || hardSync) videoSteering.delete(el);
@@ -722,16 +735,17 @@ export function syncRuntimeMedia(params: {
         // only exists during render).
         const skipForInjectedVideo = el.tagName === "VIDEO" && !!findInjectedRenderFrame(el);
         if (!skipForInjectedVideo) {
+          const target = Math.max(0, relTime + lead);
           try {
-            el.currentTime = relTime;
+            el.currentTime = target;
           } catch (err) {
             swallow("runtime.media.site2", err);
           }
-          if (Math.abs(el.currentTime - relTime) > 0.5 && !seekLoadRetried.has(el)) {
+          if (Math.abs(el.currentTime - target) > 0.5 && !seekLoadRetried.has(el)) {
             seekLoadRetried.add(el);
             el.load();
             try {
-              el.currentTime = relTime;
+              el.currentTime = target;
             } catch (err) {
               swallow("runtime.media.site3", err);
             }

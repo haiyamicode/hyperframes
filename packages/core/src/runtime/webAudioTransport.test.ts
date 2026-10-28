@@ -308,6 +308,16 @@ describe("WebAudioTransport", () => {
     expect(transport.getTime()).toBe(-1);
   });
 
+  it("hears what it plays after the context's and the device's latency", () => {
+    const { transport, mock } = setupTransport(100);
+    Object.assign(mock.ctx, { baseLatency: 0.01, outputLatency: 0.032 });
+    expect(transport.outputLatency()).toBeCloseTo(0.042, 10);
+    // An engine that does not report the device's latency counts the context's alone.
+    Object.assign(mock.ctx, { outputLatency: undefined });
+    expect(transport.outputLatency()).toBe(0.01);
+    expect(new WebAudioTransport().outputLatency()).toBe(0);
+  });
+
   it("ownsClock returns false initially", () => {
     const transport = new WebAudioTransport();
     expect(transport.ownsClock()).toBe(false);

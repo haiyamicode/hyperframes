@@ -3511,6 +3511,7 @@ export function initSandboxRuntimeModular(): void {
     const forceSync = state.mediaForceSyncNextTick || waitChanged;
     state.mediaForceSyncNextTick = false;
     if (!state.nativeMediaSyncDisabled) {
+      const playheadLatency = playheadOutputLatency();
       syncRuntimeMedia({
         clips: syncedClips,
         timeSeconds: state.currentTime,
@@ -3527,6 +3528,8 @@ export function initSandboxRuntimeModular(): void {
           webAudio.setElementVolume(el, authorVolume, clipGain),
         isWebAudioOwned: (el) => webAudio.ownsElement(el),
         isWebAudioRouted: (el) => webAudio.routesElement(el),
+        heardLead: (el) =>
+          (webAudio.routesElement(el) ? webAudio.outputLatency() : 0) - playheadLatency,
         onAutoplayBlocked: () => {
           if (state.mediaAutoplayBlockedPosted) return;
           state.mediaAutoplayBlockedPosted = true;
@@ -5168,6 +5171,15 @@ export function initSandboxRuntimeModular(): void {
     }
     return longest;
   };
+
+  /** How long after the playhead reads a moment it is heard: Web Audio's output latency while it
+   *  runs on Web Audio time or on an element played through it, none on native media. */
+  function playheadOutputLatency(): number {
+    if (clock.getSource() !== "audio") return 0;
+    const followed = clock.audioElement();
+    const throughWebAudio = followed ? webAudio.routesElement(followed) : webAudio.ownsClock();
+    return throughWebAudio ? webAudio.outputLatency() : 0;
+  }
 
   function refreshTransportClockSource(): void {
     // Audio-master clock: three tiers of timing precision.

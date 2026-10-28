@@ -1,5 +1,6 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
 import { initSandboxRuntimeModular } from "./init";
+import { WebAudioTransport } from "./webAudioTransport";
 import type { RuntimeTimelineLike } from "./types";
 
 function makeNode(kind: string) {
@@ -456,5 +457,35 @@ describe("Play waits for the media at the playhead", () => {
       stepFrames(1);
     }
     expect(volumes.filter((value) => value !== 1)).toEqual([]);
+  });
+});
+
+describe("Audio heard through Web Audio beside native media", () => {
+  it("lets it read ahead of the native media the playhead follows by the output latency", async () => {
+    const { vo, music } = await start(VOICE_AND_MUSIC);
+    // The voice plays through Web Audio, the music natively: the playhead follows the music.
+    vi.spyOn(WebAudioTransport.prototype, "routesElement").mockImplementation(
+      (el) => el === vo!.el,
+    );
+    vi.spyOn(WebAudioTransport.prototype, "outputLatency").mockReturnValue(0.043);
+    window.__player!.play();
+    await flush();
+    const seeks: number[] = [];
+    Object.defineProperty(vo!.el, "currentTime", {
+      configurable: true,
+      get: () => vo!.state.currentTime,
+      set: (value: number) => {
+        seeks.push(value);
+        vo!.state.currentTime = value;
+      },
+    });
+    // Where a start leaves them: the music's output came up 70ms after Web Audio's.
+    for (let frame = 1; frame <= 30; frame++) {
+      music!.state.currentTime = frame / 60;
+      vo!.state.currentTime = frame / 60 + 0.07;
+      stepFrames(1);
+    }
+    expect(window.__player!.getTime()).toBeCloseTo(0.5, 2);
+    expect(seeks).toEqual([]);
   });
 });

@@ -1966,6 +1966,78 @@ describe("syncRuntimeMedia", () => {
     expect(clip.el.currentTime).toBe(5);
   });
 
+  describe("audio heard through another output than the playhead's", () => {
+    // Web Audio sounds 43ms after it reads, the native media the playhead follows about at once.
+    const HEARD_LEAD = 0.043;
+
+    function playingAudioAt(currentTime: number) {
+      const clip = createMockClip({ start: 0, end: 10, mediaStart: 0 }, "audio");
+      clip.el.currentTime = currentTime;
+      Object.defineProperty(clip.el, "paused", {
+        value: false,
+        writable: true,
+        configurable: true,
+      });
+      return clip;
+    }
+
+    // A first tick in step, then the playhead held at 5 while the element's reading stays put.
+    function tickAt5(clip: RuntimeMediaClip, heardLead: number) {
+      syncRuntimeMedia({
+        clips: [clip],
+        timeSeconds: clip.el.currentTime,
+        playing: true,
+        playbackRate: 1,
+        heardLead: () => heardLead,
+      });
+      for (let i = 0; i < 4; i++) {
+        syncRuntimeMedia({
+          clips: [clip],
+          timeSeconds: 5,
+          playing: true,
+          playbackRate: 1,
+          heardLead: () => heardLead,
+        });
+      }
+    }
+
+    it("leaves audio reading ahead of the playhead by up to its heard lead", () => {
+      // Where a start left it: the native output started 70ms later than Web Audio's.
+      const clip = playingAudioAt(5.07);
+      tickAt5(clip, HEARD_LEAD);
+      expect(clip.el.currentTime).toBe(5.07);
+    });
+
+    it("leaves native audio trailing a playhead heard through Web Audio by up to that lead", () => {
+      const clip = playingAudioAt(4.93);
+      tickAt5(clip, -HEARD_LEAD);
+      expect(clip.el.currentTime).toBe(4.93);
+    });
+
+    it("lands a correction where the audio is heard on the playhead", () => {
+      const ahead = playingAudioAt(5.1);
+      tickAt5(ahead, HEARD_LEAD);
+      expect(ahead.el.currentTime).toBeCloseTo(5 + HEARD_LEAD, 10);
+      const behind = playingAudioAt(4.9);
+      tickAt5(behind, -HEARD_LEAD);
+      expect(behind.el.currentTime).toBeCloseTo(5 - HEARD_LEAD, 10);
+    });
+
+    it("starts paused audio from the playhead, not anywhere up to its heard lead past it", () => {
+      const clip = createMockClip({ start: 0, end: 10, mediaStart: 0 }, "audio");
+      clip.el.currentTime = 5.03;
+      syncRuntimeMedia({
+        clips: [clip],
+        timeSeconds: 5,
+        playing: true,
+        playbackRate: 1,
+        forceSync: true,
+        heardLead: () => HEARD_LEAD,
+      });
+      expect(clip.el.currentTime).toBe(5);
+    });
+  });
+
   describe("playing video drift", () => {
     function playingVideoAt(currentTime: number, playbackRate = 1) {
       const clip = createMockClip({ start: 0, end: 20, duration: 20 });
