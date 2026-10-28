@@ -75,6 +75,8 @@ declare global {
       releasePausedMedia?: (el: HTMLMediaElement) => void;
       /** Where Studio's loop wraps to while it plays, or null: the clips due there stay loaded. */
       setLoopStart?: (seconds: number | null) => void;
+      /** True while playback holds for media at the playhead that has no data to play from yet. */
+      waitingForMedia?: () => boolean;
       /** Read-only level taps for the Studio meters: nothing exists until
        *  `start()`, and `stop()` removes every tap. Peaks are linear per channel. */
       audioMeter?: {

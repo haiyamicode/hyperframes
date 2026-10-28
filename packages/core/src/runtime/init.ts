@@ -55,6 +55,7 @@ import { createWaapiAdapter } from "./adapters/waapi";
 import {
   MEDIA_SYNC_TOLERANCE_SECONDS,
   isUnplayable,
+  mediaToWaitFor,
   readElementPlaybackRate,
   readElementPlaybackStart,
   readElementRateSpec,
@@ -412,6 +413,10 @@ const MEDIA_URL_ATTRS = new Map([
 
 const SLOW_IDLE_HEARTBEAT_MS = 1000;
 const HIDDEN_TRANSPORT_TICK_MS = 16;
+// Longest playback holds for media with no data at the playhead before it plays on without it.
+const MEDIA_WAIT_CAP_MS = 10_000;
+// Longest Play waits for the audio output to wake, which takes milliseconds when it can at all.
+const OUTPUT_WAKE_CAP_MS = 1_000;
 
 // One document.getAnimations() per seek and the pause after it, read on first use, shared by all adapters.
 function pageAnimationsForOnePass(): () => Animation[] {
@@ -552,6 +557,13 @@ export function initSandboxRuntimeModular(): void {
   void webAudio.init().then((ok) => {
     webAudioReady = ok;
   });
+  // Set while playback holds at `time` for media at the playhead with no data to play from (see
+  // `mediaToWaitFor`): the clock stays there and the media waits, then all of it starts together.
+  let mediaWait: { time: number; since: number } | null = null;
+  // Elements a wait gave up on at MEDIA_WAIT_CAP_MS; until the next play they join when they can.
+  let mediaWaitGivenUp = new WeakSet<HTMLMediaElement>();
+  // Until then, the media that sounds through the audio output also waits for it to wake (see Play).
+  let outputWaitUntil = 0;
   window.__hf = window.__hf || {};
   /** Hidden by an ancestor, or by the BUS this clip belongs to. The bus is
    *  never an ancestor — membership is on the member's `data-audio-group` — so
@@ -3342,6 +3354,7 @@ export function initSandboxRuntimeModular(): void {
   };
   window.__hf.leasePausedMedia = leasePausedMedia;
   window.__hf.releasePausedMedia = releasePausedMedia;
+  window.__hf.waitingForMedia = () => mediaWait !== null && clock.isPlaying();
   window.__hf.setLoopStart = (seconds) => {
     loopStartSeconds = seconds != null && Number.isFinite(seconds) && seconds >= 0 ? seconds : null;
   };
@@ -3461,13 +3474,46 @@ export function initSandboxRuntimeModular(): void {
       ? mediaClips
       : mediaClips.filter((clip) => !pausedMediaLeases.has(clip.el));
 
-    const forceSync = state.mediaForceSyncNextTick;
-    if (forceSync) state.mediaForceSyncNextTick = false;
+    // Playback holds while media at the playhead has nothing to play from, or no output to be heard
+    // through yet, and starts with it.
+    const wasWaiting = mediaWait !== null;
+    const webAudioPlays = webAudioReady && !state.webAudioMediaDisabled;
+    // Only Play waits for the output: mid-play it sleeps only while nothing sounds through it.
+    const outputAsleep = webAudioPlays && Date.now() < outputWaitUntil && !webAudio.isAwake();
+    const waitFor =
+      state.isPlaying && indexed && !state.nativeMediaSyncDisabled
+        ? mediaToWaitFor(
+            syncedClips,
+            state.currentTime,
+            state.playbackRate,
+            outputAsleep ? joinsWebAudio : undefined,
+          ).filter((el) => !mediaWaitGivenUp.has(el))
+        : [];
+    if (waitFor.length > 0 && mediaWait && Date.now() - mediaWait.since >= MEDIA_WAIT_CAP_MS) {
+      for (const el of waitFor) mediaWaitGivenUp.add(el);
+      waitFor.length = 0;
+    }
+    if (waitFor.length === 0) mediaWait = null;
+    else {
+      mediaWait ??= { time: state.currentTime, since: Date.now() };
+      // Woken for the start, and kept from idling back to sleep while it waits.
+      if (webAudioPlays) webAudio.wakeUp();
+    }
+    const waitChanged = wasWaiting !== (mediaWait !== null);
+    if (waitChanged && state.isPlaying) {
+      // Web Audio keeps its own time, so it stops for the wait and starts again with the media
+      // (nothing schedules it while a wait holds, and Play always follows a stop).
+      if (mediaWait) webAudio.stopAll();
+      else if (webAudioReady) scheduleWebAudioForActiveClips();
+    }
+
+    const forceSync = state.mediaForceSyncNextTick || waitChanged;
+    state.mediaForceSyncNextTick = false;
     if (!state.nativeMediaSyncDisabled) {
       syncRuntimeMedia({
         clips: syncedClips,
         timeSeconds: state.currentTime,
-        playing: state.isPlaying,
+        playing: state.isPlaying && !mediaWait,
         playbackRate: state.playbackRate,
         outputMuted: state.mediaOutputMuted,
         userMuted: state.bridgeMuted,
@@ -3504,6 +3550,8 @@ export function initSandboxRuntimeModular(): void {
         : undefined;
     syncTimedElementVisibility(state.currentTime, undefined, timingRevision, playedFrom);
     lastVisibilityPassSeconds = state.currentTime;
+    // Started or released, the clock follows: held where the wait began, or on the media now playing.
+    if (waitChanged) refreshTransportClockSource();
   };
 
   const postState = (force: boolean) => {
@@ -4197,6 +4245,7 @@ export function initSandboxRuntimeModular(): void {
     held?.apply();
   };
   const applySeek = (seekTime: number, options?: { keepPlaying?: boolean }) => {
+    mediaWait = null;
     webAudio.stopAll();
     clock.detachAudioSource();
     const wasPlaying = clock.isPlaying();
@@ -4247,13 +4296,14 @@ export function initSandboxRuntimeModular(): void {
       if (!clock.play()) return;
       state.isPlaying = true;
       state.mediaForceSyncNextTick = true;
-      hardSyncAllMedia(clock.now());
-      // Schedule audio through WebAudio for sample-accurate timing.
-      // Falls back to HTMLMediaElement playback if WebAudio isn't ready
-      // or decoding fails (the syncRuntimeMedia path handles that).
-      if (webAudioReady && !state.nativeMediaSyncDisabled && !state.webAudioMediaDisabled) {
-        scheduleWebAudioForActiveClips();
-      }
+      // Starts held where it is: the sync below lets it run once the media there can play, and
+      // starts Web Audio with it (sample-accurate; the HTMLMedia path covers what it cannot play).
+      mediaWait = { time: clock.now(), since: Date.now() };
+      mediaWaitGivenUp = new WeakSet();
+      // An output asleep wakes for Play, but one that cannot yet (no user gesture) must not hold it.
+      outputWaitUntil = mediaWait.since + OUTPUT_WAKE_CAP_MS;
+      refreshTransportClockSource();
+      hardSyncAllMedia(mediaWait.time);
       runAdapters("play");
       syncMediaForCurrentState();
       colorGrading.redraw();
@@ -4261,6 +4311,7 @@ export function initSandboxRuntimeModular(): void {
     },
     pause: () => {
       if (!clock.isPlaying()) return;
+      mediaWait = null;
       webAudio.stopAll();
       clock.detachAudioSource();
       clock.pause();
@@ -5122,6 +5173,11 @@ export function initSandboxRuntimeModular(): void {
     // 1. WebAudio (AudioContext.currentTime) while it plays a decoded buffer: ~21µs, sample-accurate
     // 2. HTMLMediaElement (audio.currentTime): ~33ms, frame-accurate
     // 3. Monotonic (performance.now()): ~1ms, no audio coupling
+    // Held for media (see `mediaWait`), it stays where that media will start.
+    if (clock.isPlaying() && mediaWait) {
+      clock.attachAudioSource({ currentTimeSeconds: mediaWait.time });
+      return;
+    }
     if (clock.isPlaying() && !state.mediaOutputMuted) {
       if (
         !state.nativeMediaSyncDisabled &&
@@ -5284,6 +5340,7 @@ export function initSandboxRuntimeModular(): void {
       // tl.totalTime(t) directly); the parent loops by seeking to its range
       // start, or 0, and playing again.
       if (clock.isPlaying() && clock.reachedEnd()) {
+        mediaWait = null;
         webAudio.stopAll();
         clock.detachAudioSource();
         clock.pause();
@@ -5351,7 +5408,8 @@ export function initSandboxRuntimeModular(): void {
   // same edge as the HTMLMedia path. Reused by play() and by the rate-change
   // handler (a rate change can't rescale a bounded source in place).
   const scheduleWebAudioForActiveClips = () => {
-    if (state.nativeMediaSyncDisabled || state.webAudioMediaDisabled) return;
+    // Held for media (see `mediaWait`), Web Audio starts with it.
+    if (state.nativeMediaSyncDisabled || state.webAudioMediaDisabled || mediaWait) return;
     const gen = webAudio.startGeneration();
     const clips = webAudioMediaIn(document);
     webAudio.releaseDecodedExcept(clips);

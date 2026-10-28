@@ -72,6 +72,10 @@ class FakeAudioContext {
 }
 
 const idle = () => vi.advanceTimersByTimeAsync(20000);
+// Promise jobs only: an awake context idles back to sleep once the timers run.
+async function settle() {
+  for (let i = 0; i < 20; i++) await Promise.resolve();
+}
 const originalAudioContext = (globalThis as Record<string, unknown>).AudioContext;
 
 async function startTransport() {
@@ -312,5 +316,49 @@ describe("WebAudioTransport keeps its context suspended while nothing sounds", (
     el.dispatchEvent(new Event("emptied"));
     await idle();
     expect(ctx.state).toBe("suspended");
+  });
+
+  it("wakes a sleeping output once for a waiting Play, and calls it awake only once it runs", async () => {
+    const { transport, ctx } = await startTransport();
+    expect(transport.isAwake()).toBe(false);
+    const resume = vi.spyOn(ctx, "resume");
+    let release!: () => void;
+    resumeGate = new Promise((resolve) => (release = resolve));
+    transport.wakeUp();
+    transport.wakeUp();
+    await settle();
+    expect(resume).toHaveBeenCalledTimes(1);
+    expect(transport.isAwake()).toBe(false);
+    release();
+    await settle();
+    expect(transport.isAwake()).toBe(true);
+  });
+
+  it("is not awake while a resume waits behind a suspend still pending", async () => {
+    const { transport, ctx } = await startTransport();
+    await play(transport, makeTrack());
+    let release!: () => void;
+    suspendGate = new Promise((resolve) => (release = resolve));
+    transport.stopAll();
+    await idle();
+    expect(ctx.state).toBe("running");
+    transport.wakeUp();
+    expect(transport.isAwake()).toBe(false);
+    release();
+    await settle();
+    expect(ctx.state).toBe("running");
+    expect(transport.isAwake()).toBe(true);
+  });
+
+  it("does not idle to sleep while a Play waits on it", async () => {
+    const { transport, ctx } = await startTransport();
+    await play(transport, makeTrack());
+    const suspendsBefore = ctx.suspends;
+    transport.stopAll();
+    await vi.advanceTimersByTimeAsync(9000);
+    transport.wakeUp();
+    await idle();
+    expect(ctx.suspends).toBe(suspendsBefore);
+    expect(transport.isAwake()).toBe(true);
   });
 });

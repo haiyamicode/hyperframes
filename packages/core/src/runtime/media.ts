@@ -332,6 +332,70 @@ function steeredVideoRate(el: HTMLMediaElement, offset: number, baseRate: number
   return baseRate * (1 + direction * VIDEO_STEER);
 }
 
+/** Source seconds an element needs buffered from where it plays before playback may run it. */
+const MEDIA_READY_AHEAD_SECONDS = 0.5;
+
+/** Whether `el` can play from `sourceTime` now: loaded there, or with data buffered from there. */
+function hasDataToPlayFrom(el: HTMLMediaElement, sourceTime: number): boolean {
+  if (
+    el.readyState >= el.HAVE_FUTURE_DATA &&
+    !el.seeking &&
+    Math.abs(el.currentTime - sourceTime) <= MEDIA_HARD_SYNC_SECONDS
+  )
+    return true;
+  // A seek drops readyState to metadata even inside buffered data, so a seeking element is judged
+  // by what it has buffered.
+  const until = Math.min(
+    sourceTime + MEDIA_READY_AHEAD_SECONDS,
+    Number.isFinite(el.duration) ? el.duration : Number.POSITIVE_INFINITY,
+  );
+  const { buffered } = el;
+  for (let i = 0; i < buffered.length; i += 1) {
+    if (buffered.start(i) <= sourceTime + 0.001 && buffered.end(i) >= until - 0.001) return true;
+  }
+  return false;
+}
+
+/**
+ * The elements playback has to wait for at `timeSeconds`: each one sounding or showing there with
+ * no data to play from its position yet, or sounding through an audio output still asleep
+ * (`throughSleepingOutput`), which drops what plays through it until it runs. A clock that runs on
+ * without one seeks it forward once its data arrives, and each seek restarts its sound. Media that
+ * cannot play (no source, an error, hidden, slower than the browser plays, past its source end)
+ * never waits.
+ */
+export function mediaToWaitFor(
+  clips: RuntimeMediaClip[],
+  timeSeconds: number,
+  playbackRate: number,
+  throughSleepingOutput?: (el: HTMLMediaElement) => boolean,
+): HTMLMediaElement[] {
+  const waiting: HTMLMediaElement[] = [];
+  for (const clip of clips) {
+    const { el } = clip;
+    if (
+      !el.isConnected ||
+      el.networkState === el.NETWORK_EMPTY ||
+      isUnplayable(el) ||
+      !isInClipWindow(timeSeconds, clip.start, clip.end) ||
+      el.closest("[data-hidden]") !== null ||
+      (el.tagName === "AUDIO" && isMemberGroupHidden(el.ownerDocument, el))
+    )
+      continue;
+    const clipRate = clip.rate ?? clip.playbackRate;
+    const elapsed = timeSeconds - (clip.origin ?? clip.start);
+    if (rateAt(clipRate, elapsed) * playbackRate < MIN_NATIVE_PLAYBACK_RATE) continue;
+    let sourceTime = sourceTimeAt(clipRate, Math.max(0, elapsed)) + clip.mediaStart;
+    if (clip.sourceDuration != null && sourceTime >= clip.sourceDuration) {
+      const loopLength = clip.sourceDuration - clip.mediaStart;
+      if (!clip.loop || loopLength <= 0) continue;
+      sourceTime = clip.mediaStart + ((sourceTime - clip.mediaStart) % loopLength);
+    }
+    if (throughSleepingOutput?.(el) || !hasDataToPlayFrom(el, sourceTime)) waiting.push(el);
+  }
+  return waiting;
+}
+
 // fallow-ignore-next-line complexity
 export function syncRuntimeMedia(params: {
   clips: RuntimeMediaClip[];
@@ -528,7 +592,9 @@ export function syncRuntimeMedia(params: {
       const silencedByHidden =
         el.closest("[data-hidden]") !== null || isMemberGroupHidden(el.ownerDocument, el);
       const effectiveVolume = silencedByHidden ? 0 : clampVolume(authorVolume * userVol);
-      if (Math.abs(el.volume - effectiveVolume) > 1e-6) el.volume = effectiveVolume;
+      // A routed element's own volume stays at unity (the graph applies the level): writing the
+      // level here as well dipped it once a tick, every tick a fade or the user's volume is below 1.
+      if (!routed && Math.abs(el.volume - effectiveVolume) > 1e-6) el.volume = effectiveVolume;
       lastRuntimeAppliedVolume.set(el, effectiveVolume);
       params.onElementVolume?.(el, effectiveVolume, authorVolume, preFxGain);
       // Mute only when force-muted or the transport owns this element; an unclaimed

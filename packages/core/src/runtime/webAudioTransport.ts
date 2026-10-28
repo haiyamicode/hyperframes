@@ -205,6 +205,7 @@ export class WebAudioTransport {
   // suspended unless a captured track is sounding on the idle route (scrub).
   private _playingCaptured = new Set<HTMLMediaElement>();
   private _suspendPending = false;
+  private _waking = false;
   private _restTimer: ReturnType<typeof setTimeout> | null = null;
 
   async init(): Promise<boolean> {
@@ -229,6 +230,25 @@ export class WebAudioTransport {
     if (!this._ctx || (this._ctx.state === "running" && !this._suspendPending)) return;
     this._suspendPending = false;
     await this._ctx.resume();
+  }
+
+  /** Whether the output runs: a context asleep drops whatever plays through it until it resumes. */
+  isAwake(): boolean {
+    // Waking, it may still have a suspend queued ahead of the resume.
+    return !this._ctx || (!this._waking && this._ctx.state === "running" && !this._suspendPending);
+  }
+
+  /** Wakes the output for a play that waits on it, and keeps it from idling back to sleep meanwhile. */
+  wakeUp(): void {
+    if (this._restTimer !== null) clearTimeout(this._restTimer);
+    this._restTimer = null;
+    if (this._waking || this.isAwake()) return;
+    this._waking = true;
+    this.wake()
+      .catch((err) => swallow("webAudioTransport.wakeUp", err))
+      .finally(() => {
+        this._waking = false;
+      });
   }
 
   private rest(): void {
@@ -984,6 +1004,7 @@ export class WebAudioTransport {
     this._mediaElementSources = new WeakMap();
     this._playingCaptured.clear();
     this._suspendPending = false;
+    this._waking = false;
     if (this._restTimer !== null) clearTimeout(this._restTimer);
     this._restTimer = null;
     if (this._ctx) {
