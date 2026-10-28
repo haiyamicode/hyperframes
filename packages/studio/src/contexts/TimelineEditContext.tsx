@@ -50,6 +50,7 @@ const EDIT_CALLBACK_KEY_SET: Record<keyof TimelineEditCallbacks, true> = {
   onFreezeFrame: true,
   clipMenuTools: true,
   trackInsert: true,
+  timeStep: true,
   onNotice: true,
   onDeleteKeyframe: true,
   onDeleteAllKeyframes: true,

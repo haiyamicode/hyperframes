@@ -107,8 +107,10 @@ function outOfRangeZoneInsertRow(
   return desired < Math.min(...zoneTracks) ? zoneTop : zoneBottom;
 }
 
-const floorCenti = (v: number) => Math.floor(v * 100 + 1e-6) / 100;
-const ceilCenti = (v: number) => Math.ceil(v * 100 - 1e-6) / 100;
+/** `v` down or up to a multiple of `step`, past float noise. Divides by the steps per second, so
+ *  the result is the double nearest the multiple (2.05, not 2.0500000000000003). */
+const floorToStep = (v: number, step: number) => Math.floor(v * (1 / step) + 1e-6) / (1 / step);
+const ceilToStep = (v: number, step: number) => Math.ceil(v * (1 / step) - 1e-6) / (1 / step);
 
 /** Whether `candidate` is nearer `start` than `best`; a tie goes to the later time. */
 const isNearer = (candidate: number, best: number, start: number) => {
@@ -119,7 +121,9 @@ const isNearer = (candidate: number, best: number, start: number) => {
 /** The start nearest `start`, not below `minStart`, at which [start, start + duration) overlaps
  *  no clip on `track`. Ties go to the later time. The gap after the row's last clip always fits,
  *  so a row with no gap long enough puts the clip right after its last clip. `origin` is the
- *  clip's own start on this track: keeping it rewrites nothing, so it fits between any edges. */
+ *  clip's own start on this track: keeping it rewrites nothing, so it fits between any edges.
+ *  A gap-bound start is a multiple of `step`, the step starts are written on, so no written start
+ *  overlaps a neighbour. */
 export function resolveNearestFreeStart(
   elements: readonly TimelineElement[],
   track: number,
@@ -128,6 +132,7 @@ export function resolveNearestFreeStart(
   excludeKey: string | null,
   minStart = 0,
   origin: number | null = null,
+  step = 0.01,
 ): number {
   const busy = elements
     .filter((el) => (el.key ?? el.id) !== excludeKey && el.track === track)
@@ -135,12 +140,12 @@ export function resolveNearestFreeStart(
   let best = Number.POSITIVE_INFINITY;
   let gapStart = minStart;
   for (const el of [...busy, null]) {
-    const latest = el ? floorCenti(el.start - duration) : Number.POSITIVE_INFINITY;
+    const latest = el ? floorToStep(el.start - duration, step) : Number.POSITIVE_INFINITY;
     if (latest >= gapStart) {
       const candidate = Math.min(Math.max(start, gapStart), latest);
       if (Math.abs(candidate - start) <= Math.abs(best - start)) best = candidate;
     }
-    if (el) gapStart = Math.max(gapStart, ceilCenti(el.start + el.duration));
+    if (el) gapStart = Math.max(gapStart, ceilToStep(el.start + el.duration, step));
   }
   if (origin === null || origin < minStart || !isNearer(origin, best, start)) return best;
   // Float slack at both ends: 0.333 + 1.733 is 2.0660000000000003, a hair past a neighbour at 2.066.
@@ -216,6 +221,8 @@ export function resolveZoneDropPlacement(input: {
   lanes?: ReadonlySet<number>;
   /** False: no new track opens — an aim at no allowed lane keeps the clip on its own. */
   trackInsert?: boolean;
+  /** The step clip starts are written on (see TimelineEditCallbacks.timeStep). */
+  timeStep?: number;
 }): { track: number; insertRow: number | null; start: number } {
   const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;
@@ -251,6 +258,7 @@ export function resolveZoneDropPlacement(input: {
       dragKey,
       minStart,
       originStart,
+      input.timeStep,
     );
     return { track, insertRow: null, start: freeStart };
   }
@@ -273,6 +281,7 @@ export function resolveZoneDropPlacement(input: {
     dragKey,
     minStart,
     origin,
+    input.timeStep,
   );
   return { track: desired, insertRow: null, start: freeStart };
 }

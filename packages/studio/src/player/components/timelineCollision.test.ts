@@ -98,6 +98,13 @@ describe("resolveNearestFreeStart", () => {
     expect(start).toBe(2.05);
     expect(start + 5.045333).toBeLessThanOrEqual(7.1);
   });
+
+  it("fits a gap the clip fills to the host's time step", () => {
+    const line = [el("a", 0, 5.992, 5.472), el("b", 0, 14.224, 0.1)]; // a ends at 11.464
+    expect(resolveNearestFreeStart(line, 0, 11.46, 2.76, null)).toBe(14.33); // no centisecond fits
+    expect(resolveNearestFreeStart(line, 0, 11.46, 2.76, null, 0, null, 0.001)).toBe(11.464);
+    expect(resolveNearestFreeStart(line, 0, 11.46, 2.761, null, 0, null, 0.001)).toBe(14.324);
+  });
 });
 
 describe("resolveInsertRow (only empty space outside the rows opens a track)", () => {

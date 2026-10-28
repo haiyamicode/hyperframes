@@ -95,6 +95,8 @@ interface UseTimelineClipDragInput {
   sessionEpoch?: number;
   /** False: drags never open a new track (see TimelineEditCallbacks.trackInsert). */
   trackInsert?: boolean;
+  /** The step the host writes starts on (see TimelineEditCallbacks.timeStep). */
+  timeStep?: number;
 }
 
 export function useTimelineClipDrag({
@@ -117,6 +119,7 @@ export function useTimelineClipDrag({
   refreshAfterLaneMove,
   sessionEpoch = 0,
   trackInsert,
+  timeStep,
 }: UseTimelineClipDragInput) {
   const getClipCapabilities = useTimelineClipCapabilities();
   const commitGestureRef = useRef<() => void>(() => {});
@@ -296,6 +299,8 @@ export function useTimelineClipDrag({
   refreshAfterLaneMoveRef.current = refreshAfterLaneMove;
   const trackInsertRef = useRef(trackInsert);
   trackInsertRef.current = trackInsert;
+  const timeStepRef = useRef(timeStep);
+  timeStepRef.current = timeStep;
 
   const clipDragScrollRaf = useRef(0);
   const clipDragPointerRef = useRef<{
@@ -328,6 +333,7 @@ export function useTimelineClipDrag({
         audioTracks: dragAudioTracksRef.current,
         gridStep: snapGridStep(),
         trackInsert: trackInsertRef.current,
+        timeStep: timeStepRef.current,
       });
     },
     [

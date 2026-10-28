@@ -59,6 +59,8 @@ export interface DragPreviewContext {
   gridStep?: number;
   /** False: a drag never opens a new track (see TimelineEditCallbacks.trackInsert). */
   trackInsert?: boolean;
+  /** The step the host writes starts on (see TimelineEditCallbacks.timeStep). */
+  timeStep?: number;
 }
 
 export function createKeyboardClipDrag(
@@ -175,6 +177,7 @@ function resolveDropPlacement(
     origin: { track: drag.element.track, start: drag.element.start },
     lanes: laneKindTracks(drag.element, trackOrder, elements),
     trackInsert: ctx.trackInsert,
+    timeStep: ctx.timeStep,
   });
 }
 

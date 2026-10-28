@@ -1007,6 +1007,32 @@ describe("computeDragPreview — lane kinds, opening tracks", () => {
   });
 });
 
+describe("computeDragPreview — the host's time step", () => {
+  // A line dragged to another lane and back: its old slot fits it only to the millisecond.
+  const before = clip("before", 0, 5.992, 5.472, 0, "audio"); // ends at 11.464
+  const after = clip("after", 0, 14.224, 0.1, 0, "audio");
+  const line = clip("line", 1, 11.464, 2.76, 0, "audio");
+
+  function aimBack(timeStep?: number): DraggedClipState {
+    const { drag, clientX } = horizontalDrag(line, 1.5, 0);
+    return computeDragPreview(drag, clientX, yForRow(0.5), {
+      ...ctx(undefined, [before, after, line]),
+      trackOrder: [0, 1],
+      audioTracks: new Set([0, 1]),
+      timeStep,
+    });
+  }
+
+  it("drops a clip into a gap it fills to the step", () => {
+    expect(aimBack(0.001)).toMatchObject({
+      previewTrack: 0,
+      insertRow: null,
+      previewStart: 11.464,
+    });
+    expect(aimBack()).toMatchObject({ previewTrack: 0, insertRow: null, previewStart: 14.33 });
+  });
+});
+
 describe("computeResizePreview — the longest a clip may become", () => {
   const pause = { ...clip("pause", 0, 2, 1, 0, "audio"), maxDuration: 60 };
   const trim = (edge: "start" | "end", clientX: number) =>

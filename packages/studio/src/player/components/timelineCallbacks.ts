@@ -143,6 +143,11 @@ export interface TimelineEditCallbacks {
   clipMenuTools?: boolean;
   /** False: a clip drag never opens a new track; clips move only between existing lanes. */
   trackInsert?: boolean;
+  /**
+   * Seconds between the times the host writes a moved clip's start on. A drop between clips lands
+   * on that step, so a clip fits any gap it fills to the step. Absent: 0.01, the timeline's own.
+   */
+  timeStep?: number;
   onNotice?: (message: string, tone?: "error" | "info") => void;
   onDeleteKeyframe?: (elementId: string, keyframe: TimelineKeyframeTarget) => void;
   onDeleteAllKeyframes?: (element: TimelineElement, animationId?: string) => void;

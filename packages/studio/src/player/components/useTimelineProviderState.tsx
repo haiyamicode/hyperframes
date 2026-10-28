@@ -231,6 +231,7 @@ export function useTimelineProviderState({
     refreshAfterLaneMove,
     sessionEpoch,
     trackInsert: editContext.trackInsert !== false,
+    timeStep: editContext.timeStep,
   });
   const assetDrop = useTimelineAssetDrop({
     scrollRef,
