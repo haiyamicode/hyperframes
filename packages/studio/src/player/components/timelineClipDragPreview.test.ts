@@ -14,6 +14,7 @@ import {
   type TimelineMoveEdit,
 } from "./timelineClipDragCommit";
 import {
+  CLIP_Y,
   LANE_H,
   RULER_H,
   TRACKS_TOP_PAD,
@@ -90,7 +91,8 @@ function ctx(
 // content-space y for a fractional row index (inverse of getTimelineRowFromY).
 const yForRow = (rowFloat: number) => RULER_H + TRACKS_TOP_PAD + rowFloat * TRACK_H;
 
-// A drag grabbing `element` at vertical position `grabRowFloat` within its lane.
+// A drag grabbing `element` at vertical position `grabRowFloat` within its lane: its clip's bar starts
+// CLIP_Y below the lane's top.
 function horizontalDrag(
   element: TimelineElement,
   grabRowFloat: number,
@@ -108,7 +110,7 @@ function horizontalDrag(
     pointerClientX: originClientX,
     pointerClientY: originClientY,
     pointerOffsetX: 0,
-    pointerOffsetY: 0,
+    pointerOffsetY: (grabRowFloat - Math.floor(grabRowFloat)) * TRACK_H - CLIP_Y,
     previewStart: element.start,
     previewTrack: element.track,
     insertRow: null,
@@ -1004,6 +1006,36 @@ describe("computeDragPreview — lane kinds, opening tracks", () => {
     }
     expect(aim(image, -0.6)).toMatchObject({ previewTrack: 1, insertRow: null });
     expect(aim(music, 0.5)).toMatchObject({ previewTrack: 2, insertRow: null });
+  });
+
+  // The speech clip grabbed `grab` px below its lane's top, dragged 2 s sideways and `drift` px down.
+  function sideways(grab: number, drift: number): DraggedClipState {
+    const { drag, clientX, clientY } = horizontalDrag(speech, grab / TRACK_H, 2);
+    return computeDragPreview(drag, clientX, clientY + drift, {
+      ...ctx(undefined, elements),
+      trackOrder: [0, 1, 2],
+      audioTracks: new Set([0, 2]),
+    });
+  }
+
+  it("aims with its middle, so a sideways drag grabbed near an edge opens no track", () => {
+    const nearBottom = TRACK_H - CLIP_Y - 2;
+    const nearTop = CLIP_Y + 2;
+    expect(sideways(nearBottom, 5)).toMatchObject({
+      previewTrack: 0,
+      insertRow: null,
+      previewStart: 2,
+    });
+    expect(sideways(nearTop, -5)).toMatchObject({
+      previewTrack: 0,
+      insertRow: null,
+      previewStart: 2,
+    });
+  });
+
+  it("opens a track once its middle reaches the seam", () => {
+    expect(sideways(CLIP_Y + 2, -TRACK_H / 2)).toMatchObject({ insertRow: 0 });
+    expect(sideways(TRACK_H - CLIP_Y - 2, TRACK_H / 2)).toMatchObject({ insertRow: 1 });
   });
 });
 

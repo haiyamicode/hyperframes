@@ -148,6 +148,15 @@ function dragRowAim(
   return { rowFloat, insertRow: physicalInsertRow(rowFloat, y, ctx, geometry) };
 }
 
+/**
+ * How far below its clip's middle the pointer holds a clip held to lanes of its kind. Such a clip
+ * aims rows with its middle, so one grabbed near an edge and dragged sideways opens no track at the
+ * seam beside it. 0 for other clips, which aim with the pointer.
+ */
+function grabBelowMiddle(drag: DraggedClipState): number {
+  return drag.element.laneKind === undefined ? 0 : drag.pointerOffsetY + CLIP_Y - TRACK_H / 2;
+}
+
 /** The drop decision for the pointer's row (see resolveZoneDropPlacement). */
 function resolveDropPlacement(
   drag: DraggedClipState,
@@ -221,8 +230,11 @@ export function computeDragPreview(
   const scrollRectTop = scroll?.getBoundingClientRect().top ?? 0;
   const geometry =
     ctx.rowGeometry ?? getTimelineRowGeometry(ctx.rowHeights ?? ctx.trackOrder.map(() => TRACK_H));
-  const originRow = geometry.getRowFromY(drag.originClientY - scrollRectTop + drag.originScrollTop);
-  const aim = dragRowAim(drag, clientY, ctx, geometry);
+  const grab = grabBelowMiddle(drag);
+  const originRow = geometry.getRowFromY(
+    drag.originClientY - grab - scrollRectTop + drag.originScrollTop,
+  );
+  const aim = dragRowAim(drag, clientY - grab, ctx, geometry);
   const currentRow = aim.rowFloat;
   // resolveTimelineMove's vertical axis is row indices, which is why the pointer
   // and scroll pixels are folded into originRow/currentRow above.
