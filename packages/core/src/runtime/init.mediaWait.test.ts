@@ -461,7 +461,7 @@ describe("Play waits for the media at the playhead", () => {
 });
 
 describe("Audio heard through Web Audio beside native media", () => {
-  it("lets it read ahead of the native media the playhead follows by the output latency", async () => {
+  it("lets it read ahead of the native media the playhead follows as far as outputs start apart", async () => {
     const { vo, music } = await start(VOICE_AND_MUSIC);
     // The voice plays through Web Audio, the music natively: the playhead follows the music.
     vi.spyOn(WebAudioTransport.prototype, "routesElement").mockImplementation(
@@ -479,10 +479,11 @@ describe("Audio heard through Web Audio beside native media", () => {
         vo!.state.currentTime = value;
       },
     });
-    // Where a start leaves them: the music's output came up 70ms after Web Audio's.
+    // Measured on a first play: the music's output came up ~40ms after Web Audio's, so the
+    // voice read 85ms ahead of it, its 43ms output latency and that start skew.
     for (let frame = 1; frame <= 30; frame++) {
       music!.state.currentTime = frame / 60;
-      vo!.state.currentTime = frame / 60 + 0.07;
+      vo!.state.currentTime = frame / 60 + 0.085;
       stepFrames(1);
     }
     expect(window.__player!.getTime()).toBeCloseTo(0.5, 2);

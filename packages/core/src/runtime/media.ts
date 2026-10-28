@@ -319,8 +319,13 @@ function prepareUpcomingVideo(
   }
 }
 
-/** Drift a playing audio element may carry before sync pulls it back onto the playhead. */
+/** Drift media may carry before sync lands it back on the playhead. */
 export const MEDIA_SYNC_TOLERANCE_SECONDS = 0.04;
+
+/** Drift playing audio may carry before a seek pulls it back. Outputs start apart (a native
+ *  element's ~40 ms after Web Audio's), so audio started together plays that far off; the seek
+ *  closing it is an audible cut, where an offset under 0.1 s is rarely noticed. */
+const PLAYING_AUDIO_SYNC_TOLERANCE_SECONDS = 0.1;
 
 // Chromium refuses a slower playbackRate (NotSupportedError).
 const MIN_NATIVE_PLAYBACK_RATE = 1 / 16;
@@ -635,10 +640,10 @@ export function syncRuntimeMedia(params: {
       //    Forcing el.currentTime every frame causes audible seek hiccups
       //    (readyState drops briefly), so we only hard-seek when necessary.
       //
-      // 2. Strict sync (40ms, 2 consecutive samples): catches accumulated
-      //    drift from pause/play toggling or browser media pipeline latency.
-      //    Offset-stabilization guard (4ms/tick) prevents false corrections
-      //    during initial buffering where offset grows naturally.
+      // 2. Strict sync (40ms, 0.1s for playing audio; 2 consecutive samples):
+      //    catches accumulated drift from pause/play toggling or browser media
+      //    pipeline latency. Offset-stabilization guard (4ms/tick) prevents
+      //    false corrections during initial buffering where offset grows naturally.
       //
       // 3. Force sync (20ms): on play/pause/seek/rate transitions, correct
       //    any drift >20ms immediately via the forceSync one-shot flag.
@@ -655,8 +660,8 @@ export function syncRuntimeMedia(params: {
       // leaves it, between that and the playhead, depends on how fast each output starts, so all
       // of it is in step: a seek inside it is a cut for nothing. A correction lands it where it is
       // heard on the playhead.
-      const lead =
-        playing && !el.paused && el.tagName === "AUDIO" ? (params.heardLead?.(el) ?? 0) : 0;
+      const playingAudio = playing && !el.paused && el.tagName === "AUDIO";
+      const lead = playingAudio ? (params.heardLead?.(el) ?? 0) : 0;
       const outOfStep = (tolerance: number) =>
         currentElTime - relTime > Math.max(0, lead) + tolerance ||
         relTime - currentElTime > Math.max(0, -lead) + tolerance;
@@ -690,13 +695,16 @@ export function syncRuntimeMedia(params: {
       const heldBelowFloor = params.playing && !playing;
       const offsetStabilized =
         heldBelowFloor || (prevOffset !== undefined && Math.abs(offset - prevOffset) < 0.004);
+      const strictTolerance = playingAudio
+        ? PLAYING_AUDIO_SYNC_TOLERANCE_SECONDS
+        : MEDIA_SYNC_TOLERANCE_SECONDS;
       let strictSync = false;
       if (
         !isPlayingVideo &&
         !hardSync &&
         !firstTickOfClip &&
         offsetStabilized &&
-        outOfStep(MEDIA_SYNC_TOLERANCE_SECONDS)
+        outOfStep(strictTolerance)
       ) {
         const samples = (strictDriftSamples.get(el) ?? 0) + 1;
         strictDriftSamples.set(el, samples);
@@ -704,7 +712,7 @@ export function syncRuntimeMedia(params: {
           strictSync = true;
           strictDriftSamples.set(el, 0);
         }
-      } else if (!outOfStep(MEDIA_SYNC_TOLERANCE_SECONDS)) {
+      } else if (!outOfStep(strictTolerance)) {
         strictDriftSamples.set(el, 0);
       }
       const forceSync = !isPlayingVideo && params.forceSync && outOfStep(0.02);

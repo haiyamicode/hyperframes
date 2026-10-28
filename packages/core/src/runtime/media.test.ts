@@ -2014,13 +2014,44 @@ describe("syncRuntimeMedia", () => {
       expect(clip.el.currentTime).toBe(4.93);
     });
 
+    it("leaves audio started apart from the playhead's output up to 0.1s past its lead", () => {
+      // Measured: Web Audio's output sounded ~40ms before the native music the playhead
+      // followed, so the speech read 83ms ahead; a seek there was an audible 63ms repeat.
+      const ahead = playingAudioAt(5.13);
+      tickAt5(ahead, HEARD_LEAD);
+      expect(ahead.el.currentTime).toBe(5.13);
+      const behind = playingAudioAt(4.87);
+      tickAt5(behind, -HEARD_LEAD);
+      expect(behind.el.currentTime).toBe(4.87);
+    });
+
     it("lands a correction where the audio is heard on the playhead", () => {
-      const ahead = playingAudioAt(5.1);
+      const ahead = playingAudioAt(5.2);
       tickAt5(ahead, HEARD_LEAD);
       expect(ahead.el.currentTime).toBeCloseTo(5 + HEARD_LEAD, 10);
-      const behind = playingAudioAt(4.9);
+      const behind = playingAudioAt(4.8);
       tickAt5(behind, -HEARD_LEAD);
       expect(behind.el.currentTime).toBeCloseTo(5 - HEARD_LEAD, 10);
+    });
+
+    it("still lands playing audio past 20ms on a transition (force sync)", () => {
+      const clip = playingAudioAt(5.07);
+      syncRuntimeMedia({
+        clips: [clip],
+        timeSeconds: 5.07,
+        playing: true,
+        playbackRate: 1,
+        heardLead: () => 0,
+      });
+      syncRuntimeMedia({
+        clips: [clip],
+        timeSeconds: 5,
+        playing: true,
+        playbackRate: 1,
+        forceSync: true,
+        heardLead: () => 0,
+      });
+      expect(clip.el.currentTime).toBe(5);
     });
 
     it("starts paused audio from the playhead, not anywhere up to its heard lead past it", () => {
