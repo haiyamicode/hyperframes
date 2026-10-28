@@ -981,14 +981,23 @@ describe("computeDragPreview — lane kinds, opening tracks", () => {
   const speech = ofKind(clip("speech", 0, 0, 3, 0, "audio"), "voiceover");
   const image = ofKind(clip("image", 1, 0, 4, 2, "img"), "visual");
   const music = ofKind(clip("music", 2, 0, 8, 0, "audio"), "music");
-  const elements = [speech, image, music];
+  // A second clip on each lane, so a dragged clip never leaves its lane empty.
+  const nextLine = ofKind(clip("next-line", 0, 5, 2, 0, "audio"), "voiceover");
+  const nextImage = ofKind(clip("next-image", 1, 6, 2, 2, "img"), "visual");
+  const nextSong = ofKind(clip("next-song", 2, 10, 4, 0, "audio"), "music");
+  const elements = [speech, image, music, nextLine, nextImage, nextSong];
 
-  function aim(element: TimelineElement, rowFloat: number): DraggedClipState {
+  function aim(
+    element: TimelineElement,
+    rowFloat: number,
+    all = elements,
+    audioTracks = new Set([0, 2]),
+  ): DraggedClipState {
     const { drag, clientX } = horizontalDrag(element, element.track + 0.5, 0);
     return computeDragPreview(drag, clientX, yForRow(rowFloat), {
-      ...ctx(undefined, elements),
+      ...ctx(undefined, all),
       trackOrder: [0, 1, 2],
-      audioTracks: new Set([0, 2]),
+      audioTracks,
     });
   }
 
@@ -1006,6 +1015,18 @@ describe("computeDragPreview — lane kinds, opening tracks", () => {
     }
     expect(aim(image, -0.6)).toMatchObject({ previewTrack: 1, insertRow: null });
     expect(aim(music, 0.5)).toMatchObject({ previewTrack: 2, insertRow: null });
+  });
+
+  it("the last clip on its lane opens no track right beside it, which would only re-create the lane", () => {
+    const withoutNextSong = elements.filter((el) => el !== nextSong);
+    expect(aim(music, 3.6, withoutNextSong)).toMatchObject({ previewTrack: 2, insertRow: null });
+    expect(aim(music, 2.02, withoutNextSong)).toMatchObject({ previewTrack: 2, insertRow: null });
+    // Two voice lanes: the last line on the top one opens a track below the other, not between them.
+    const otherLine = ofKind(clip("other-line", 1, 5, 2, 0, "audio"), "voiceover");
+    const voices = [speech, otherLine, music];
+    const audio = new Set([0, 1, 2]);
+    expect(aim(speech, 1.02, voices, audio)).toMatchObject({ previewTrack: 0, insertRow: null });
+    expect(aim(speech, 2.02, voices, audio)).toMatchObject({ insertRow: 2 });
   });
 
   // The speech clip grabbed `grab` px below its lane's top, dragged 2 s sideways and `drift` px down.

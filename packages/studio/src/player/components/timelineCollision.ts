@@ -200,7 +200,42 @@ function keepsOwnLane(
   return input.trackInsert === false || (kindRows !== undefined && input.order.includes(desired));
 }
 
+/** Whether a track opened at `row` only re-creates the lane the clip leaves: the clip is held to lanes
+ *  of its kind, is the last on its lane, and `row` is right above or below that lane. The new track
+ *  would take the lane's place without what its host keeps for it, such as its name. */
+function reopensOwnLane(
+  input: Parameters<typeof resolveZoneDropPlacement>[0],
+  origin: { track: number },
+  row: number,
+): boolean {
+  const own = input.order.indexOf(origin.track);
+  if (!input.lanes || own < 0 || (row !== own && row !== own + 1)) return false;
+  return !input.elements.some(
+    (el) => el.track === origin.track && (el.key ?? el.id) !== input.dragKey,
+  );
+}
+
+/** The clip on its own lane, at the free time nearest the aim. */
+function onOwnLane(
+  input: Parameters<typeof resolveZoneDropPlacement>[0],
+  origin: { track: number; start: number },
+): { track: number; insertRow: null; start: number } {
+  const { elements, start, duration, dragKey, minStart, timeStep } = input;
+  const freeStart = resolveNearestFreeStart(
+    elements,
+    origin.track,
+    start,
+    duration,
+    dragKey,
+    minStart,
+    origin.start,
+    timeStep,
+  );
+  return { track: origin.track, insertRow: null, start: freeStart };
+}
+
 // A deliberate seam opens a track; other aims land at the nearest free time on a row of the clip's kind.
+// A track that would only re-create the clip's own lane stays shut: the clip keeps that lane.
 export function resolveZoneDropPlacement(input: {
   order: number[];
   audioTracks: ReadonlySet<number>;
@@ -224,7 +259,20 @@ export function resolveZoneDropPlacement(input: {
   /** The step clip starts are written on (see TimelineEditCallbacks.timeStep). */
   timeStep?: number;
 }): { track: number; insertRow: number | null; start: number } {
-  const { order, audioTracks, elements, desiredTrack, deliberateInsertRow } = input;
+  const placement = placeOnZone(input);
+  const { origin } = input;
+  if (origin && placement.insertRow !== null && reopensOwnLane(input, origin, placement.insertRow))
+    return onOwnLane(input, origin);
+  return placement;
+}
+
+// fallow-ignore-next-line complexity
+function placeOnZone(input: Parameters<typeof resolveZoneDropPlacement>[0]): {
+  track: number;
+  insertRow: number | null;
+  start: number;
+} {
+  const { order, audioTracks, elements, desiredTrack, deliberateInsertRow, origin } = input;
   const { start, duration, dragKey, isAudio, minStart } = input;
   const audioRow = timelineAudioRow(order, audioTracks, input.groupTracks);
   const kindRows = input.lanes && laneKindInsertRows(order, input.lanes, input.allowedInsertRows);
@@ -248,19 +296,8 @@ export function resolveZoneDropPlacement(input: {
       audioTracks.has(t) === isAudio &&
       (!input.lanes || input.lanes.has(t)),
   );
-  if (!zoneTracks.includes(desired) && input.origin && keepsOwnLane(input, desired, kindRows)) {
-    const { track, start: originStart } = input.origin;
-    const freeStart = resolveNearestFreeStart(
-      elements,
-      track,
-      start,
-      duration,
-      dragKey,
-      minStart,
-      originStart,
-      input.timeStep,
-    );
-    return { track, insertRow: null, start: freeStart };
+  if (!zoneTracks.includes(desired) && origin && keepsOwnLane(input, desired, kindRows)) {
+    return onOwnLane(input, origin);
   }
   // Only when the aim is outside the rows, or the clip's zone has no row yet.
   if (!zoneTracks.includes(desired)) {
@@ -272,7 +309,6 @@ export function resolveZoneDropPlacement(input: {
     const allowedRow = allowedRowAtOrAbove(insertRow, kindRows ?? input.allowedInsertRows);
     return { track: desired, insertRow: allowedRow, start };
   }
-  const origin = input.origin?.track === desired ? input.origin.start : null;
   const freeStart = resolveNearestFreeStart(
     elements,
     desired,
@@ -280,7 +316,7 @@ export function resolveZoneDropPlacement(input: {
     duration,
     dragKey,
     minStart,
-    origin,
+    origin?.track === desired ? origin.start : null,
     input.timeStep,
   );
   return { track: desired, insertRow: null, start: freeStart };
