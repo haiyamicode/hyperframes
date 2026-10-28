@@ -283,7 +283,7 @@ describe("Play waits for the media at the playhead", () => {
     ],
     [
       "has no usable source",
-      `<audio id="vo" data-start="0" data-duration="5" src="/x.mp3"></audio>`,
+      `<audio id="vo" data-start="0" data-duration="5"><source src="/x.mp3"></audio>`,
       {
         networkState: 3,
       },
@@ -307,6 +307,25 @@ describe("Play waits for the media at the playhead", () => {
     stepFrames(1);
     expect(waiting()).toBe(false);
     expect(vo).toBeDefined();
+  });
+
+  it("waits for media given a source the browser has not started loading", async () => {
+    // A `src` set just before Play reads as no source until the browser picks it up.
+    const { vo, music } = await start(VOICE_AND_MUSIC, { vo: { readyState: 0, networkState: 3 } });
+    window.__player!.play();
+    stepFrames(1);
+    expect(waiting()).toBe(true);
+    expect(music!.play).not.toHaveBeenCalled();
+
+    vo!.state.networkState = 2;
+    stepFrames(1);
+    expect(waiting()).toBe(true);
+
+    vo!.state.readyState = 4;
+    stepFrames(1);
+    expect(waiting()).toBe(false);
+    expect(vo!.play).toHaveBeenCalled();
+    expect(music!.play).toHaveBeenCalled();
   });
 
   it("gives up on media still without data after ten seconds and plays on", async () => {

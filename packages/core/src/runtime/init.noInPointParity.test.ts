@@ -105,6 +105,8 @@ function mount(fixture: Fixture) {
 async function record(fixture: Fixture) {
   mount(fixture);
   vi.spyOn(console, "info").mockImplementation(() => {});
+  // Decoded before Play, so Play hands the decoded audio over.
+  vi.spyOn(WebAudioTransport.prototype, "hasDecoded").mockReturnValue(true);
   vi.spyOn(WebAudioTransport.prototype, "decodeAudioElement").mockResolvedValue({} as AudioBuffer);
   const capture = vi
     .spyOn(WebAudioTransport.prototype, "scheduleMediaElementPlayback")

@@ -138,6 +138,7 @@ import { WebAudioTransport } from "./webAudioTransport";
 import {
   classifyWebAudioMediaRoute,
   isRouteSelectionSettled,
+  nativeUnexpressibleProcessing,
   reportWebAudioMediaRoute,
 } from "./webAudioRoute.js";
 import {
@@ -5441,6 +5442,8 @@ export function initSandboxRuntimeModular(): void {
       // that existed before (#3458).
       const route = classifyWebAudioMediaRoute(rawEl);
       reportWebAudioMediaRoute(rawEl, route);
+      // Read now, as the pass starts: the decode fallback below is told only after capture settles.
+      const decodedAtPass = webAudio.hasDecoded(rawEl);
       // The cross-origin verdict's BEST outcome is decode, since a CDN that
       // sends `Access-Control-Allow-Origin` (the author just never wrote the
       // `crossorigin` attribute) decodes fine and keeps the whole FX graph.
@@ -5486,8 +5489,17 @@ export function initSandboxRuntimeModular(): void {
           if (route.kind === "web-audio" && hasProcessing) rawEl.muted = true;
           return;
         }
+        // Audio decoded since this pass began would cut in on the element's sound partway and start
+        // a little off where the element was. Where the element sounds the same, it waits in the cache
+        // for the next pass (Play, a hold's end) and the element plays until then; processing only the
+        // decoded audio carries is worth the cut.
+        if (!decodedAtPass && nativeUnexpressibleProcessing(rawEl).length === 0) {
+          void webAudio.decodeAudioElement(rawEl);
+          return;
+        }
         void webAudio.decodeAudioElement(rawEl).then((buffer) => {
-          if (!buffer || !clock.isPlaying()) return;
+          // Held for media, nothing plays; the hold's end schedules again.
+          if (!buffer || !clock.isPlaying() || mediaWait) return;
           void webAudio.schedulePlayback(
             rawEl,
             buffer,
@@ -5563,7 +5575,11 @@ export function initSandboxRuntimeModular(): void {
       player.seek(timeSeconds);
       emitAnalyticsEvent("composition_seeked", { time: timeSeconds });
     },
+    // A host sends its mute and volume again with every Play. Unchanged, they leave the elements
+    // to the per-tick sync, which already applies them: a write here wiped a fade's level, or
+    // unmuted an element Web Audio plays, until the next tick.
     onSetMuted: (muted) => {
+      if (muted === state.bridgeMuted) return;
       state.bridgeMuted = muted;
       const effective = muted || state.mediaOutputMuted;
       webAudio.setMuted(effective);
@@ -5574,6 +5590,7 @@ export function initSandboxRuntimeModular(): void {
       }
     },
     onSetVolume: (volume) => {
+      if (volume === state.bridgeVolume) return;
       state.bridgeVolume = volume;
       webAudio.setVolume(volume);
       const mediaEls = document.querySelectorAll("video, audio");
@@ -5594,6 +5611,7 @@ export function initSandboxRuntimeModular(): void {
       }
     },
     onSetMediaOutputMuted: (muted) => {
+      if (muted === state.mediaOutputMuted) return;
       state.mediaOutputMuted = muted;
       const effective = muted || state.bridgeMuted;
       webAudio.setMuted(effective);

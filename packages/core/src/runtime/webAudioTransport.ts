@@ -153,6 +153,8 @@ const IDLE_SUSPEND_MS = 10000;
 export class WebAudioTransport {
   private _ctx: AudioContext | null = null;
   private _bufferCache = new Map<string, AudioBuffer>();
+  /** Decodes under way, by source: a pass made while one runs shares it instead of fetching again. */
+  private _decoding = new Map<string, Promise<AudioBuffer | null>>();
   private _failedSrcs = new Set<string>();
   private _mediaElementSources = new WeakMap<HTMLMediaElement, MediaElementAudioSourceNode>();
   private _activeSources: ScheduledSource[] = [];
@@ -290,13 +292,27 @@ export class WebAudioTransport {
     }
   }
 
+  /** Whether the element's audio is decoded and at hand now. */
+  hasDecoded(el: HTMLMediaElement): boolean {
+    const src = decodeKey(el);
+    return !!src && this._bufferCache.has(src);
+  }
+
   async decodeAudioElement(el: HTMLMediaElement): Promise<AudioBuffer | null> {
     const src = decodeKey(el);
     if (!src) return null;
     if (this._bufferCache.has(src)) return this._bufferCache.get(src)!;
     if (this._failedSrcs.has(src)) return null;
     if (!this._ctx) return null;
+    let decoding = this._decoding.get(src);
+    if (!decoding) {
+      decoding = this.fetchAndDecode(src, this._ctx).finally(() => this._decoding.delete(src));
+      this._decoding.set(src, decoding);
+    }
+    return decoding;
+  }
 
+  private async fetchAndDecode(src: string, ctx: AudioContext): Promise<AudioBuffer | null> {
     // Fetch the bytes. A network error or non-OK status (e.g. a 404 for an
     // asset that simply has not been uploaded yet) is TRANSIENT — return null
     // WITHOUT blacklisting, so the next play/seek generation retries once the
@@ -322,7 +338,7 @@ export class WebAudioTransport {
     // unsupported codec) — that IS permanent, so blacklist to avoid re-decoding
     // the same bad payload on every generation.
     try {
-      const audioBuffer = await this._ctx.decodeAudioData(arrayBuffer);
+      const audioBuffer = await ctx.decodeAudioData(arrayBuffer);
       this._bufferCache.set(src, audioBuffer);
       return audioBuffer;
     } catch (err) {
@@ -1000,6 +1016,7 @@ export class WebAudioTransport {
     this._master?.fx?.dispose();
     this._master = null;
     this._bufferCache.clear();
+    this._decoding.clear();
     this._failedSrcs.clear();
     this._mediaElementSources = new WeakMap();
     this._playingCaptured.clear();

@@ -239,13 +239,44 @@ describe("initSandboxRuntimeModular", () => {
     window.dispatchEvent(
       new MessageEvent("message", {
         source: window.parent,
-        data: { source: "hf-parent", type: "control", action: "set-volume", volume: 1 },
+        data: { source: "hf-parent", type: "control", action: "set-volume", volume: 0.8 },
       }),
     );
 
     expect(boosted.volume).toBe(1);
     // The clip after the boosted one is what a throw mid-loop strands.
-    expect(quiet.volume).toBeCloseTo(0.5, 5);
+    expect(quiet.volume).toBeCloseTo(0.4, 5);
+  });
+
+  it("leaves the elements to the sync when the bridge repeats the mute and volume it has", () => {
+    // A host sends both again with every Play. Rewritten from `data-volume`, a clip fading in
+    // sounded at its full level until the next tick, and an element Web Audio plays was unmuted.
+    document.body.innerHTML =
+      `<div data-composition-id="main" data-root="true">` +
+      `<audio data-start="0" data-volume="0.5"></audio>` +
+      `</div>`;
+    window.__timelines = {};
+    initSandboxRuntimeModular();
+
+    const audio = document.querySelector("audio");
+    if (!audio) throw new Error("expected the clip");
+    audio.volume = 0.1;
+    audio.muted = true;
+    for (const control of [
+      { action: "set-volume", volume: 1 },
+      { action: "set-muted", muted: false },
+      { action: "set-media-output-muted", muted: false },
+    ]) {
+      window.dispatchEvent(
+        new MessageEvent("message", {
+          source: window.parent,
+          data: { source: "hf-parent", type: "control", ...control },
+        }),
+      );
+    }
+
+    expect(audio.volume).toBe(0.1);
+    expect(audio.muted).toBe(true);
   });
 
   afterEach(() => {
@@ -5726,6 +5757,47 @@ describe("initSandboxRuntimeModular", () => {
       expect(decodeSpy).toHaveBeenCalledWith(audio);
     });
 
+    it("leaves a clip decoded after Play on its element, and plays the decoded audio from the next Play", async () => {
+      // Taking over mid-play cut into the element's sound and started a little off where it was.
+      const audio = mountAudio("https://cdn.example.com/track.mp3");
+      vi.spyOn(console, "info").mockImplementation(() => {});
+      const decoded = vi.spyOn(WebAudioTransport.prototype, "hasDecoded").mockReturnValue(false);
+      const decode = vi
+        .spyOn(WebAudioTransport.prototype, "decodeAudioElement")
+        .mockResolvedValue({} as AudioBuffer);
+      const schedule = vi
+        .spyOn(WebAudioTransport.prototype, "schedulePlayback")
+        .mockResolvedValue(null);
+
+      await startPlayback();
+      await vi.waitFor(() => expect(decode).toHaveBeenCalledWith(audio));
+      for (let i = 0; i < 4; i++) await Promise.resolve();
+      expect(schedule).not.toHaveBeenCalled();
+      expect(audio.muted).toBe(false);
+
+      window.__player?.pause();
+      decoded.mockReturnValue(true);
+      window.__player?.play();
+      await vi.waitFor(() => expect(schedule).toHaveBeenCalled());
+      expect(schedule.mock.calls[0]![0]).toBe(audio);
+    });
+
+    it("hands a clip over to its audio decoded after Play when the element cannot carry its gain", async () => {
+      const audio = mountAudio("https://cdn.example.com/track.mp3", { "data-volume": "1.5" });
+      vi.spyOn(console, "info").mockImplementation(() => {});
+      vi.spyOn(WebAudioTransport.prototype, "hasDecoded").mockReturnValue(false);
+      vi.spyOn(WebAudioTransport.prototype, "decodeAudioElement").mockResolvedValue(
+        {} as AudioBuffer,
+      );
+      const schedule = vi
+        .spyOn(WebAudioTransport.prototype, "schedulePlayback")
+        .mockResolvedValue(null);
+
+      await startPlayback();
+      await vi.waitFor(() => expect(schedule).toHaveBeenCalled());
+      expect(schedule.mock.calls[0]![0]).toBe(audio);
+    });
+
     it("holds a decoded clip a split half cut until that half starts, timed from the clip's own start", async () => {
       const audio = mountAudio("https://cdn.example.com/track.mp3", {
         "data-start": "2",
@@ -5745,6 +5817,8 @@ describe("initSandboxRuntimeModular", () => {
       half.appendChild(audio);
       vi.spyOn(console, "info").mockImplementation(() => {});
       const buffer = {} as AudioBuffer;
+      // Decoded before this Play, as on a replay.
+      vi.spyOn(WebAudioTransport.prototype, "hasDecoded").mockReturnValue(true);
       vi.spyOn(WebAudioTransport.prototype, "decodeAudioElement").mockResolvedValue(buffer);
       const schedule = vi
         .spyOn(WebAudioTransport.prototype, "schedulePlayback")
@@ -5776,6 +5850,7 @@ describe("initSandboxRuntimeModular", () => {
       scene.appendChild(audio);
       window.__timelines = { main: createMockTimeline(10), scene: createMockTimeline(3) };
       vi.spyOn(console, "info").mockImplementation(() => {});
+      vi.spyOn(WebAudioTransport.prototype, "hasDecoded").mockReturnValue(true);
       vi.spyOn(WebAudioTransport.prototype, "decodeAudioElement").mockResolvedValue(
         {} as AudioBuffer,
       );

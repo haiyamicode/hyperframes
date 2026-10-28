@@ -226,6 +226,19 @@ export function isUnplayable(el: HTMLMediaElement): boolean {
   return el.error != null || el.networkState === MEDIA_NETWORK_NO_SOURCE;
 }
 
+/**
+ * Whether `el` was just given a `src` the browser has not started loading. Until the browser picks
+ * it up after the current task, which a busy page puts off for far longer than a frame, the
+ * element reports no source; one that then fails to load sets `error`.
+ */
+function isSourcePending(el: HTMLMediaElement): boolean {
+  return (
+    el.error == null &&
+    el.networkState === MEDIA_NETWORK_NO_SOURCE &&
+    (el.getAttribute("src") ?? "") !== ""
+  );
+}
+
 const lastRuntimeAppliedVolume = new WeakMap<HTMLMediaElement, number>();
 
 function clampVolume(volume: number): number {
@@ -362,7 +375,7 @@ function hasDataToPlayFrom(el: HTMLMediaElement, sourceTime: number): boolean {
  * (`throughSleepingOutput`), which drops what plays through it until it runs. A clock that runs on
  * without one seeks it forward once its data arrives, and each seek restarts its sound. Media that
  * cannot play (no source, an error, hidden, slower than the browser plays, past its source end)
- * never waits.
+ * never waits; media just given a source waits for it.
  */
 export function mediaToWaitFor(
   clips: RuntimeMediaClip[],
@@ -376,7 +389,7 @@ export function mediaToWaitFor(
     if (
       !el.isConnected ||
       el.networkState === el.NETWORK_EMPTY ||
-      isUnplayable(el) ||
+      (isUnplayable(el) && !isSourcePending(el)) ||
       !isInClipWindow(timeSeconds, clip.start, clip.end) ||
       el.closest("[data-hidden]") !== null ||
       (el.tagName === "AUDIO" && isMemberGroupHidden(el.ownerDocument, el))
