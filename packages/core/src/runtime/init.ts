@@ -5333,7 +5333,8 @@ export function initSandboxRuntimeModular(): void {
       if (!isInClipWindow(timeSeconds, kept.start, kept.end)) continue;
       const mediaStart = readElementPlaybackStart(el);
       const relTime = timeSeconds - start + mediaStart;
-      if (relTime >= 0) {
+      // Media already there stays: a seek to where it is still restarts its output.
+      if (relTime >= 0 && Math.abs(el.currentTime - relTime) > 0.001) {
         try {
           el.currentTime = relTime;
         } catch {
