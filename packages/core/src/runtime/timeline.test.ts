@@ -327,6 +327,31 @@ describe("collectRuntimeTimelinePayload", () => {
     expect(result.clips[0].kind).toBe("image");
   });
 
+  it("leaves untimed media inside a timed clip to that clip", () => {
+    const root = document.createElement("div");
+    root.setAttribute("data-composition-id", "main");
+    root.setAttribute("data-duration", "10");
+    document.body.appendChild(root);
+
+    const card = document.createElement("div");
+    card.id = "card";
+    card.setAttribute("data-start", "2");
+    card.setAttribute("data-duration", "3");
+    const avatar = document.createElement("img");
+    avatar.id = "avatar";
+    card.appendChild(avatar);
+    root.appendChild(card);
+
+    const loose = document.createElement("img");
+    loose.id = "loose";
+    root.appendChild(loose);
+
+    const ids = collectRuntimeTimelinePayload(defaultParams).clips.map((c) => c.id);
+    expect(ids).toContain("card");
+    expect(ids).toContain("loose");
+    expect(ids).not.toContain("avatar");
+  });
+
   it("gives a timed image with no data-duration the dropped-image default, not the composition remainder", () => {
     const root = document.createElement("div");
     root.setAttribute("data-composition-id", "main");

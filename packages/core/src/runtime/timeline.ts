@@ -435,6 +435,18 @@ export function collectRuntimeTimelinePayload(params: {
     if (node === root) continue;
     if (["SCRIPT", "STYLE", "LINK", "META", "TEMPLATE", "NOSCRIPT"].includes(node.tagName))
       continue;
+    // Media with no timing of its own inside a timed clip (an avatar in a card) shows and hides
+    // with that clip: it is part of it, not a clip of its own across the composition.
+    if (!node.matches("[data-start], [data-track-index], [data-composition-id]")) {
+      const timedParent = node.parentElement?.closest("[data-start]");
+      if (
+        timedParent &&
+        timedParent !== root &&
+        root?.contains(timedParent) &&
+        !timedParent.hasAttribute("data-composition-id")
+      )
+        continue;
+    }
     const compositionContext = resolveNearestCompositionContext(node, root);
     const tag = node.tagName.toLowerCase();
     let start =
