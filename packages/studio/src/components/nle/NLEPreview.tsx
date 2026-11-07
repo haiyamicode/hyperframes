@@ -43,6 +43,9 @@ interface NLEPreviewProps extends Pick<
 > {
   iframeRef: RefObject<HTMLIFrameElement | null>;
   onCompositionLoadingChange?: (loading: boolean) => void;
+  /** The live preview's failure message while its error card shows, else null: overlays drawn
+   *  over the preview step aside so its Retry stays clickable. */
+  onPreviewErrorChange?: (message: string | null) => void;
   portrait?: boolean;
   directUrl?: string;
   suppressLoadingOverlay?: boolean;
@@ -123,6 +126,7 @@ export const NLEPreview = memo(function NLEPreview({
   setShadowIframeNode,
   resetPreviewSlots,
   onCompositionLoadingChange,
+  onPreviewErrorChange,
   portrait,
   directUrl,
   suppressLoadingOverlay,
@@ -541,6 +545,7 @@ export const NLEPreview = memo(function NLEPreview({
                   onCompositionLoadingChange={onCompositionLoadingChange}
                   onReadyToShowChange={poster.onLiveReadyToShowChange}
                   onPreviewError={poster.onPreviewError}
+                  onPreviewErrorChange={onPreviewErrorChange}
                   onPainted={(details) => reportPreviewFirstFrame(slot, details)}
                   portrait={portrait}
                   suppressLoadingOverlay={suppressLoadingOverlay}

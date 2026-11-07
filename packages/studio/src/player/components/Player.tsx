@@ -32,6 +32,8 @@ interface PlayerProps {
   /** Fires once the loaded document is painted and every loader (shader, assets) has cleared. */
   onReadyToShowChange?: (ready: boolean) => void;
   onPreviewError?: (message: string) => void;
+  /** The failed-preview message while the error card shows, else null. */
+  onPreviewErrorChange?: (message: string | null) => void;
   onCompositionLoadingChange?: (loading: boolean) => void;
   onPainted?: (details: { iframe: HTMLIFrameElement; startedAt: number; loadId: number }) => void;
   portrait?: boolean;
@@ -150,6 +152,7 @@ export const Player = forwardRef<HTMLIFrameElement, PlayerProps>(
       onLoad,
       onReadyToShowChange,
       onPreviewError,
+      onPreviewErrorChange,
       onCompositionLoadingChange,
       onPainted,
       portrait,
@@ -175,6 +178,8 @@ export const Player = forwardRef<HTMLIFrameElement, PlayerProps>(
     onReadyToShowChangeRef.current = onReadyToShowChange;
     const onPreviewErrorRef = useRef(onPreviewError);
     onPreviewErrorRef.current = onPreviewError;
+    const onPreviewErrorChangeRef = useRef(onPreviewErrorChange);
+    onPreviewErrorChangeRef.current = onPreviewErrorChange;
     const [loaded, setLoaded] = useState(false);
     const [assetsLoading, setAssetsLoading] = useState(false);
     const [assetOverlayVisible, setAssetOverlayVisible] = useState(false);
@@ -472,6 +477,7 @@ export const Player = forwardRef<HTMLIFrameElement, PlayerProps>(
 
     useEffect(() => {
       if (previewError) usePlayerStore.getState().markPreviewBooted();
+      onPreviewErrorChangeRef.current?.(previewError);
     }, [previewError]);
 
     useEffect(() => {

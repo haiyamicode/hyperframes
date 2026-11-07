@@ -153,7 +153,8 @@ describe("preview errors", () => {
 
   it("retries a failed preview with a fresh player URL", async () => {
     const onPainted = vi.fn();
-    const { host, player } = await mountPlayer({ onPainted });
+    const onPreviewErrorChange = vi.fn();
+    const { host, player } = await mountPlayer({ onPainted, onPreviewErrorChange });
 
     act(() => void player.dispatchEvent(new Event("painted")));
 
@@ -166,6 +167,9 @@ describe("preview errors", () => {
     });
 
     expect(host.querySelector('[data-testid="composition-preview-error"]')).not.toBeNull();
+    expect(onPreviewErrorChange).toHaveBeenLastCalledWith(
+      "Composition timeline not found after 8s",
+    );
     const retry = Array.from(host.querySelectorAll("button")).find(
       (button) => button.textContent === "Retry preview",
     );
@@ -176,6 +180,7 @@ describe("preview errors", () => {
     const retryUrl = new URL(player.getAttribute("src") ?? "", window.location.origin);
     expect(retryUrl.searchParams.get("_hfStudioRetry")).toBe("1");
     expect(host.querySelector('[data-testid="composition-preview-error"]')).toBeNull();
+    expect(onPreviewErrorChange).toHaveBeenLastCalledWith(null);
 
     act(() => void player.dispatchEvent(new Event("painted")));
     expect(onPainted.mock.calls.map(([details]) => details.loadId)).toEqual([1, 2]);
